@@ -158,7 +158,7 @@ Add a root crontab `@reboot` job to persist across reboots (do **not** use `/etc
 ## qBittorrent Tuning (TRaSH Recommended)
 
 Tools → Options → Connection:
-- **Enable UPnP / NAT-PMP:** ❌ (unnecessary behind VPN, potential security risk)
+- **Enable UPnP / NAT-PMP:** ❌ (unnecessary — no ports need forwarding, potential security risk)
 
 Tools → Options → Speed:
 - **Apply rate limit to µTP protocol:** ✅
@@ -173,7 +173,7 @@ Tools → Options → Speed → Queue:
 - **Maximum active uploads:** `5`
 - **Maximum active torrents:** `10`
 
-> These follow [TRaSH Guides qBittorrent recommendations](https://trash-guides.info/Downloaders/qBittorrent/Basic-Setup/). Speed limits are left at unlimited since the VPN is the bottleneck. The inactivity timeout pauses stalled torrents so Sonarr/Radarr can detect them and automatically search for alternatives. Concurrent limits prevent overloading the NAS when many torrents are queued — the rest wait in line.
+> These follow [TRaSH Guides qBittorrent recommendations](https://trash-guides.info/Downloaders/qBittorrent/Basic-Setup/). Speed limits are left at unlimited by default — set them if your ISP connection needs throttling to stay responsive for other traffic. The inactivity timeout pauses stalled torrents so Sonarr/Radarr can detect them and automatically search for alternatives. Concurrent limits prevent overloading the NAS when many torrents are queued — the rest wait in line.
 
 > **Mobile access?** The default UI is poor on mobile. This stack includes [VueTorrent](https://github.com/VueTorrent/VueTorrent)—enable it at Tools → Options → Web UI → Use alternative WebUI → `/vuetorrent`.
 
@@ -188,7 +188,7 @@ Tools → Options → Web UI → Authentication:
 
 > Adjust the `10.10.0.0/24` to match your LAN subnet. The `172.20.0.0/24` is the arr-stack Docker network — this ensures Sonarr, Radarr, and API scripts can always reach qBittorrent without auth failures.
 >
-> **Is this safe?** Yes — qBittorrent sits behind Gluetun's VPN tunnel with no ports exposed to the internet. Only devices on your LAN or Docker containers can reach it. The whitelisted subnets are all internal, so auth bypass doesn't widen the attack surface.
+> **Is this safe?** Yes — qBittorrent has no ports exposed to the internet. Only devices on your LAN or Docker containers can reach it. The whitelisted subnets are all internal, so auth bypass doesn't widen the attack surface.
 
 ---
 

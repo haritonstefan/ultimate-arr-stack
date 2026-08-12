@@ -45,109 +45,8 @@ x-security: &default-security
 #########################
 services:
   # ═══════════════════════════════════════════════════════════════════════════
-  # DEUNHEALTH - Auto-recovery for VPN failures. Watches gluetun health and
-  # restarts dependent services (qBittorrent, Sonarr, etc.) when VPN recovers.
-  # No web UI. Runs silently in background.
-  # ═══════════════════════════════════════════════════════════════════════════
-  deunhealth:
-    image: qmcgaw/deunhealth:v0.3.0
-    container_name: deunhealth
-    <<: *default-security
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock:ro
-    environment:
-      - TZ=${TZ}
-    restart: always
-    logging: *default-logging
-    healthcheck:
-      test: ["CMD", "/app", "healthcheck"]
-      interval: 60s
-      timeout: 10s
-      retries: 3
-      start_period: 10s
-
-  # ═══════════════════════════════════════════════════════════════════════════
-  # GLUETUN-RECOVER - Closes a gap deunhealth cannot: services that use
-  # network_mode "service:gluetun" lose their network namespace when gluetun
-  # restarts to rebuild its VPN tunnel. Some are SIGKILLed and stay Exited
-  # (docker's restart policy can't rejoin a vanished netns; compose's
-  # depends_on restart:true only fires for compose-driven restarts, not
-  # gluetun's own); others keep RUNNING as zombies on the dead netns, reachable
-  # on localhost but invisible to the rest of the stack. deunhealth restarts
-  # neither (it only touches running-but-*unhealthy* containers, and a zombie's
-  # localhost healthcheck still passes). This watcher restarts any container
-  # labelled gluetun.dependent=true that is Exited OR was started before
-  # gluetun's current start (stale netns), both on startup and each time gluetun
-  # becomes healthy again. No web UI. Runs silently in background.
-  #
-  # KNOWN LIMIT: this only covers a gluetun RESTART. If gluetun is RECREATED
-  # (config change + compose up), dependents still reference the old container
-  # ID and docker restart fails ("joining network namespace ... No such
-  # container") — the watcher logs the failure with the compose command to run.
-  # See TROUBLESHOOTING.md "After a Gluetun RECREATE".
-  # ═══════════════════════════════════════════════════════════════════════════
-  gluetun-recover:
-    image: docker:29.7-cli
-    container_name: gluetun-recover
-    <<: *default-security
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock:ro
-    environment:
-      - TZ=${TZ}
-    restart: always
-    logging: *default-logging
-    entrypoint:
-      - /bin/sh
-      - -c
-      - |
-        # A gluetun.dependent container's network namespace is destroyed every
-        # time gluetun (re)starts. Two failure modes follow:
-        #   1. The container is SIGKILLed and stays Exited — docker's restart
-        #      policy can't rejoin a vanished netns. Caught by status=exited.
-        #   2. The container keeps RUNNING as a zombie on the dead netns: alive
-        #      on 127.0.0.1 but unreachable from the rest of the stack. An
-        #      exited-only check misses these — and they are what makes Seerr
-        #      lose Sonarr/Radarr (and Prowlarr lose FlareSolverr) after a VPN
-        #      reconnect, with every container still showing "Up".
-        # So we also restart any dependent whose StartedAt predates gluetun's
-        # current StartedAt. Timestamps are compared at whole-second granularity
-        # (the first 19 chars of RFC3339 are fixed-width, so lexical order ==
-        # chronological order; sub-second fields are RFC3339Nano-trimmed and not
-        # safe to compare as strings).
-        before() { [ "$$1" != "$$2" ] && [ "$$(printf '%s\n%s\n' "$$1" "$$2" | sort | head -n1)" = "$$1" ]; }
-        recover() {
-          g=$$(docker inspect -f '{{.State.StartedAt}}' gluetun 2>/dev/null) || return
-          g=$$(printf %s "$$g" | cut -c1-19)
-          for c in $$(docker ps -a --filter label=gluetun.dependent=true -q); do
-            state=$$(docker inspect -f '{{.State.Status}}' "$$c")
-            started=$$(docker inspect -f '{{.State.StartedAt}}' "$$c" | cut -c1-19)
-            if [ "$$state" = exited ] || before "$$started" "$$g"; then
-              name=$$(docker inspect -f '{{.Name}}' "$$c")
-              echo "gluetun-recover: restarting$$name (state=$$state, stale netns)"
-              # docker restart only works after a gluetun RESTART (same container
-              # ID). After a gluetun RECREATE the dependent's HostConfig still
-              # points at the old ID and restart fails with "joining network
-              # namespace ... No such container" — only a compose-level recreate
-              # of the dependent can fix that, and this watcher can't run
-              # compose. Log loudly instead of failing silently.
-              docker restart "$$c" || echo "gluetun-recover: FAILED to restart$$name — if gluetun was RECREATED (not restarted), run: docker compose -f docker-compose.arr-stack.yml up -d --force-recreate $${name#/}"
-            fi
-          done
-        }
-        # Recover anything already dead/stale when this watcher (re)starts.
-        recover
-        # Then react whenever gluetun's VPN tunnel comes back healthy.
-        docker events --filter container=gluetun --filter event=health_status \
-          --format '{{.Action}}' | while read -r action; do
-            case "$$action" in
-              *unhealthy*) : ;;        # ignore the unhealthy transition
-              *healthy*)   recover ;;  # tunnel is back — revive dead dependents
-            esac
-          done
-
-  # ═══════════════════════════════════════════════════════════════════════════
   # UPTIME KUMA - Monitoring dashboard. Shows health of all your services.
-  # Access: uptime.lan | NAS_IP:3001 (LAN-only, use WireGuard for remote)
+  # Access: uptime.lan | uptime.local | NAS_IP:3001 (LAN-only, use Tailscale for remote)
   # ═══════════════════════════════════════════════════════════════════════════
   uptime-kuma:
     image: louislam/uptime-kuma:2
@@ -180,7 +79,7 @@ services:
 
   # ═══════════════════════════════════════════════════════════════════════════
   # DUC - Disk usage analyzer. Visual treemap UI showing what's using storage.
-  # Access: duc.lan | NAS_IP:8838 (LAN-only, use WireGuard for remote)
+  # Access: duc.lan | duc.local | NAS_IP:8838 (LAN-only, use Tailscale for remote)
   # Note: Re-indexes daily at 4am. Manual: docker restart duc
   # ═══════════════════════════════════════════════════════════════════════════
   duc:
@@ -207,7 +106,7 @@ services:
 
   # ═══════════════════════════════════════════════════════════════════════════
   # BESZEL - Lightweight server monitoring with historical data and alerts.
-  # Access: beszel.lan | NAS_IP:8090 (LAN-only, use WireGuard for remote)
+  # Access: beszel.lan | beszel.local | NAS_IP:8090 (LAN-only, use Tailscale for remote)
   # ═══════════════════════════════════════════════════════════════════════════
   beszel:
     image: henrygd/beszel:0.18

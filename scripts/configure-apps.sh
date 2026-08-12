@@ -112,7 +112,7 @@ fi
 echo ""
 
 # Check key containers are running
-REQUIRED_CONTAINERS="gluetun qbittorrent sonarr radarr prowlarr bazarr"
+REQUIRED_CONTAINERS="qbittorrent sonarr radarr prowlarr bazarr"
 MISSING=""
 for c in $REQUIRED_CONTAINERS; do
     if ! docker ps --format '{{.Names}}' | grep -q "^${c}$"; then
@@ -122,17 +122,6 @@ done
 if [[ -n "$MISSING" ]]; then
     echo "ERROR: Required containers not running:$MISSING"
     echo "Start the stack first: docker compose -f docker-compose.arr-stack.yml up -d"
-    exit 1
-fi
-
-# Gluetun must be healthy — qBittorrent and the *arr services share its network
-# namespace, so if the VPN isn't up, they won't respond on any port. Checking here
-# turns a 4-minute mysterious hang into a clear error.
-GLUETUN_HEALTH=$(docker inspect -f '{{.State.Health.Status}}' gluetun 2>/dev/null || echo unknown)
-if [[ "$GLUETUN_HEALTH" != "healthy" ]]; then
-    echo "ERROR: Gluetun is '$GLUETUN_HEALTH' (need 'healthy')."
-    echo "       qBit and the *arr services share Gluetun's network — they can't respond until the VPN is up."
-    echo "       Wait for it to connect, then re-run. Diagnose: docker logs gluetun --tail 50"
     exit 1
 fi
 
@@ -342,7 +331,7 @@ configure_prowlarr() {
     if json_extract "$proxies" "sys.exit(0 if any(p.get('name','').lower() == 'flaresolverr' for p in data) else 1)"; then
         skip "Prowlarr: FlareSolverr proxy"
     else
-        local fs_payload='{"name":"FlareSolverr","implementation":"FlareSolverr","configContract":"FlareSolverrSettings","fields":[{"name":"host","value":"http://localhost:8191"},{"name":"requestTimeout","value":60}],"tags":[]}'
+        local fs_payload='{"name":"FlareSolverr","implementation":"FlareSolverr","configContract":"FlareSolverrSettings","fields":[{"name":"host","value":"http://flaresolverr:8191"},{"name":"requestTimeout","value":60}],"tags":[]}'
         if api_post "${BASE}/api/v1/indexerProxy" "application/json" "$fs_payload" "$AUTH" >/dev/null 2>&1; then
             ok "Prowlarr: added FlareSolverr proxy"
         else
@@ -370,7 +359,7 @@ configure_prowlarr() {
         elif [[ -z "$arr_key" ]]; then
             fail "Prowlarr: add ${arr_name} (no ${arr_name} API key)"
         else
-            local app_payload="{\"name\":\"${arr_name}\",\"syncLevel\":\"fullSync\",\"implementation\":\"${arr_name}\",\"configContract\":\"${arr_name}Settings\",\"fields\":[{\"name\":\"prowlarrUrl\",\"value\":\"http://localhost:9696\"},{\"name\":\"baseUrl\",\"value\":\"http://localhost:${arr_port}\"},{\"name\":\"apiKey\",\"value\":\"${arr_key}\"},{\"name\":\"syncCategories\",\"value\":${arr_categories}}],\"tags\":[]}"
+            local app_payload="{\"name\":\"${arr_name}\",\"syncLevel\":\"fullSync\",\"implementation\":\"${arr_name}\",\"configContract\":\"${arr_name}Settings\",\"fields\":[{\"name\":\"prowlarrUrl\",\"value\":\"http://prowlarr:9696\"},{\"name\":\"baseUrl\",\"value\":\"http://localhost:${arr_port}\"},{\"name\":\"apiKey\",\"value\":\"${arr_key}\"},{\"name\":\"syncCategories\",\"value\":${arr_categories}}],\"tags\":[]}"
             if api_post "${BASE}/api/v1/applications" "application/json" "$app_payload" "$AUTH" >/dev/null 2>&1; then
                 ok "Prowlarr: added ${arr_name} application"
             else
@@ -398,8 +387,8 @@ configure_bazarr() {
     if ! wait_for_service "Bazarr" "${BASE}/api/system/status"; then return; fi
 
     if $DRY_RUN; then
-        dry "Connect Bazarr to Sonarr (gluetun:8989)"
-        dry "Connect Bazarr to Radarr (gluetun:7878)"
+        dry "Connect Bazarr to Sonarr (sonarr:8989)"
+        dry "Connect Bazarr to Radarr (radarr:7878)"
         dry "Enable subtitle sync (ffsubsync) with thresholds"
         dry "Enable Sub-Zero mods (remove tags, emoji, OCR fixes, common fixes, fix uppercase)"
         dry "Set default subtitle language to English"
@@ -423,18 +412,18 @@ configure_bazarr() {
     sonarr_section=$(json_extract "$settings" "s=data.get('sonarr',{}); print(s.get('ip',''),s.get('port',''))")
     local radarr_section
     radarr_section=$(json_extract "$settings" "s=data.get('radarr',{}); print(s.get('ip',''),s.get('port',''))")
-    [[ "$sonarr_section" == "gluetun 8989" ]] && sonarr_connected=true
-    [[ "$radarr_section" == "gluetun 7878" ]] && radarr_connected=true
+    [[ "$sonarr_section" == "sonarr 8989" ]] && sonarr_connected=true
+    [[ "$radarr_section" == "radarr 7878" ]] && radarr_connected=true
 
     if $sonarr_connected && $radarr_connected; then
         skip "Bazarr: Sonarr/Radarr connections"
     else
         local conn_payload="{"
         if [[ -n "$SONARR_API_KEY" ]]; then
-            conn_payload+="\"sonarr\": {\"ip\": \"gluetun\", \"port\": \"8989\", \"apikey\": \"${SONARR_API_KEY}\", \"base_url\": \"\"},"
+            conn_payload+="\"sonarr\": {\"ip\": \"sonarr\", \"port\": \"8989\", \"apikey\": \"${SONARR_API_KEY}\", \"base_url\": \"\"},"
         fi
         if [[ -n "$RADARR_API_KEY" ]]; then
-            conn_payload+="\"radarr\": {\"ip\": \"gluetun\", \"port\": \"7878\", \"apikey\": \"${RADARR_API_KEY}\", \"base_url\": \"\"},"
+            conn_payload+="\"radarr\": {\"ip\": \"radarr\", \"port\": \"7878\", \"apikey\": \"${RADARR_API_KEY}\", \"base_url\": \"\"},"
         fi
         conn_payload="${conn_payload%,}}"
         if api_post "${BASE}/api/system/settings" "application/json" "$conn_payload" "$AUTH" >/dev/null 2>&1; then

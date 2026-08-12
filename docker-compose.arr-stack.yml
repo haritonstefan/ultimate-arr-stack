@@ -11,7 +11,6 @@
 # Centralized Volumes   #
 #########################
 volumes:
-  gluetun-config:
   qbittorrent-config:
   sabnzbd-config:
   sonarr-config:
@@ -28,11 +27,6 @@ volumes:
 # Networks              #
 #########################
 networks:
-  vpn-net:
-    driver: bridge
-    ipam:
-      config:
-        - subnet: 10.8.1.0/24
   arr-stack:
     name: arr-stack
     driver: bridge
@@ -78,79 +72,27 @@ x-security-lsio: &lsio-security
 #########################
 services:
   # ═══════════════════════════════════════════════════════════════════════════
-  # GLUETUN - VPN gateway. Routes download traffic through your VPN provider.
-  # All services below marked "via VPN" share this network for privacy.
-  # ═══════════════════════════════════════════════════════════════════════════
-  gluetun:
-    image: qmcgaw/gluetun:v3.41
-    container_name: gluetun
-    <<: *default-security
-    depends_on:
-      pihole:
-        condition: service_healthy  # Wait for Pi-hole DNS before VPN connects
-    cap_add:
-      - NET_ADMIN
-    devices:
-      - /dev/net/tun:/dev/net/tun
-    volumes:
-      - gluetun-config:/gluetun
-    environment:
-      # VPN Configuration - see .env.example for provider-specific setup
-      - VPN_SERVICE_PROVIDER=${VPN_SERVICE_PROVIDER}
-      - VPN_TYPE=${VPN_TYPE}
-      - WIREGUARD_PRIVATE_KEY=${WIREGUARD_PRIVATE_KEY}
-      - WIREGUARD_ADDRESSES=${WIREGUARD_ADDRESSES}
-      - SERVER_COUNTRIES=${VPN_COUNTRIES}
-      - TZ=${TZ}
-      - DNS_ADDRESS=172.20.0.5
-      - FIREWALL_OUTBOUND_SUBNETS=${LAN_SUBNET},172.20.0.0/24,10.8.1.0/24
-    ports:
-      # Ports for services using network_mode: "service:gluetun"
-      # Enables direct local access without Traefik (http://NAS_IP:PORT)
-      # NOTE: Sonarr (8989) & Radarr (7878) now run on the arr-stack bridge
-      # (their own static IPs) and publish their own ports — see those services.
-      - "9696:9696"   # Prowlarr
-      - "8085:8085"   # qBittorrent
-      - "8082:8080"   # SABnzbd
-      - "8191:8191"   # FlareSolverr
-    networks:
-      arr-stack:
-        ipv4_address: 172.20.0.3
-      vpn-net:
-    restart: always
-    logging: *default-logging
-    healthcheck:
-      test: ["CMD", "/gluetun-entrypoint", "healthcheck"]
-      interval: 1m
-      timeout: 10s
-      retries: 3
-      start_period: 30s  # Give VPN time to establish connection
-
-  # ═══════════════════════════════════════════════════════════════════════════
-  # QBITTORRENT - Torrent download client. Downloads files through VPN.
-  # Access: qbit.lan | qbit.yourdomain.com | NAS_IP:8085
+  # QBITTORRENT - Torrent download client.
+  # Access: qbit.lan | qbit.local | qbit.yourdomain.com | NAS_IP:8085
   # ═══════════════════════════════════════════════════════════════════════════
   qbittorrent:
     image: lscr.io/linuxserver/qbittorrent:5.1.4
     container_name: qbittorrent
     <<: *lsio-security
-    network_mode: "service:gluetun"
-    depends_on:
-      gluetun:
-        condition: service_healthy
-        restart: true
     environment:
       - PUID=${PUID}
       - PGID=${PGID}
       - TZ=${TZ}
       - WEBUI_PORT=8085
       - DOCKER_MODS=ghcr.io/vuetorrent/vuetorrent-lsio-mod:latest
+    ports:
+      - "8085:8085"   # Direct local access (http://NAS_IP:8085)
+    networks:
+      arr-stack:
+        ipv4_address: 172.20.0.17
     volumes:
       - qbittorrent-config:/config
       - ${MEDIA_ROOT}:/data
-    labels:
-      - deunhealth.restart.on.unhealthy=true
-      - gluetun.dependent=true  # gluetun-recover restarts this if SIGKILLed by a gluetun restart
     restart: always
     logging: *default-logging
     healthcheck:
@@ -161,28 +103,25 @@ services:
       start_period: 60s
 
   # ═══════════════════════════════════════════════════════════════════════════
-  # SABNZBD - Usenet download client. Downloads via VPN for extra security.
-  # Access: sabnzbd.lan | sabnzbd.yourdomain.com | NAS_IP:8082
+  # SABNZBD - Usenet download client.
+  # Access: sabnzbd.lan | sabnzbd.local | sabnzbd.yourdomain.com | NAS_IP:8082
   # ═══════════════════════════════════════════════════════════════════════════
   sabnzbd:
     image: lscr.io/linuxserver/sabnzbd:4.5.5
     container_name: sabnzbd
     <<: *lsio-security
-    network_mode: "service:gluetun"
-    depends_on:
-      gluetun:
-        condition: service_healthy
-        restart: true
     environment:
       - PUID=${PUID}
       - PGID=${PGID}
       - TZ=${TZ}
+    ports:
+      - "8082:8080"   # Direct local access (http://NAS_IP:8082)
+    networks:
+      arr-stack:
+        ipv4_address: 172.20.0.18
     volumes:
       - sabnzbd-config:/config
       - ${MEDIA_ROOT}:/data
-    labels:
-      - deunhealth.restart.on.unhealthy=true
-      - gluetun.dependent=true  # gluetun-recover restarts this if SIGKILLed by a gluetun restart
     restart: always
     logging: *default-logging
     healthcheck:
@@ -194,12 +133,8 @@ services:
 
   # ═══════════════════════════════════════════════════════════════════════════
   # SONARR - TV show monitor. Watches for new episodes and sends to download.
-  # Access: sonarr.lan | sonarr.yourdomain.com | NAS_IP:8989
-  # Runs on the arr-stack bridge (own IP 172.20.0.10), NOT behind the VPN:
-  # Sonarr only talks to metadata providers (TVDB/TMDB) + internal services,
-  # never to indexers/peers, so it needs no VPN. Staying on the bridge means a
-  # gluetun/VPN reconnect no longer cuts Sonarr off from Jellyseerr/Bazarr.
-  # It reaches the VPN-side download clients via the `gluetun` hostname.
+  # Access: sonarr.lan | sonarr.local | sonarr.yourdomain.com | NAS_IP:8989
+  # Reaches qBittorrent/SABnzbd directly by container name (own bridge IPs).
   # ═══════════════════════════════════════════════════════════════════════════
   sonarr:
     image: lscr.io/linuxserver/sonarr:4.0.17
@@ -217,8 +152,6 @@ services:
     volumes:
       - sonarr-config:/config
       - ${MEDIA_ROOT}:/data
-    labels:
-      - deunhealth.restart.on.unhealthy=true
     restart: always
     logging: *default-logging
     healthcheck:
@@ -230,26 +163,23 @@ services:
 
   # ═══════════════════════════════════════════════════════════════════════════
   # PROWLARR - Indexer manager. Finds download sources for Sonarr/Radarr.
-  # Access: prowlarr.lan | prowlarr.yourdomain.com | NAS_IP:9696
+  # Access: prowlarr.lan | prowlarr.local | prowlarr.yourdomain.com | NAS_IP:9696
   # ═══════════════════════════════════════════════════════════════════════════
   prowlarr:
     image: lscr.io/linuxserver/prowlarr:2.3.0
     container_name: prowlarr
     <<: *lsio-security
-    network_mode: "service:gluetun"
-    depends_on:
-      gluetun:
-        condition: service_healthy
-        restart: true
     environment:
       - PUID=${PUID}
       - PGID=${PGID}
       - TZ=${TZ}
+    ports:
+      - "9696:9696"   # Direct local access (http://NAS_IP:9696)
+    networks:
+      arr-stack:
+        ipv4_address: 172.20.0.19
     volumes:
       - prowlarr-config:/config
-    labels:
-      - deunhealth.restart.on.unhealthy=true
-      - gluetun.dependent=true  # gluetun-recover restarts this if SIGKILLed by a gluetun restart
     restart: always
     logging: *default-logging
     healthcheck:
@@ -261,10 +191,8 @@ services:
 
   # ═══════════════════════════════════════════════════════════════════════════
   # RADARR - Movie monitor. Watches for new movies and sends to download.
-  # Access: radarr.lan | radarr.yourdomain.com | NAS_IP:7878
-  # Runs on the arr-stack bridge (own IP 172.20.0.11), NOT behind the VPN —
-  # same rationale as Sonarr above. Reaches VPN-side download clients via the
-  # `gluetun` hostname.
+  # Access: radarr.lan | radarr.local | radarr.yourdomain.com | NAS_IP:7878
+  # Reaches qBittorrent/SABnzbd directly by container name (own bridge IPs).
   # ═══════════════════════════════════════════════════════════════════════════
   radarr:
     image: lscr.io/linuxserver/radarr:6.1.1
@@ -282,8 +210,6 @@ services:
     volumes:
       - radarr-config:/config
       - ${MEDIA_ROOT}:/data
-    labels:
-      - deunhealth.restart.on.unhealthy=true
     restart: always
     logging: *default-logging
     healthcheck:
@@ -420,10 +346,6 @@ services:
     cap_add:
       - CHOWN           # Create config subdirs on first run
       - DAC_OVERRIDE    # Write to root-owned volume directories
-    depends_on:
-      gluetun:
-        condition: service_healthy  # Needs gluetun to reach Sonarr/Radarr
-        restart: true
     ports:
       - "5055:5055"
     environment:
@@ -452,10 +374,6 @@ services:
     image: lscr.io/linuxserver/bazarr:1.5.6
     container_name: bazarr
     <<: *lsio-security
-    depends_on:
-      gluetun:
-        condition: service_healthy  # Needs gluetun to reach Sonarr/Radarr
-        restart: true
     ports:
       - "6767:6767"
     environment:
@@ -479,23 +397,18 @@ services:
 
   # ═══════════════════════════════════════════════════════════════════════════
   # FLARESOLVERR - Cloudflare bypass. Helps Prowlarr access protected sites.
-  # Runs behind Gluetun VPN so solved cookies match Prowlarr's exit IP.
-  # No web UI. Used internally by Prowlarr at localhost:8191
+  # No web UI. Used internally by Prowlarr at flaresolverr:8191
   # ═══════════════════════════════════════════════════════════════════════════
   flaresolverr:
     image: ghcr.io/flaresolverr/flaresolverr:v3.4.6
     container_name: flaresolverr
     <<: *default-security
-    network_mode: "service:gluetun"
-    depends_on:
-      gluetun:
-        condition: service_healthy
     environment:
       - LOG_LEVEL=info
       - TZ=${TZ}
-    labels:
-      - deunhealth.restart.on.unhealthy=true
-      - gluetun.dependent=true  # gluetun-recover restarts this if SIGKILLed by a gluetun restart
+    networks:
+      arr-stack:
+        ipv4_address: 172.20.0.21
     restart: always
     logging: *default-logging
     healthcheck:

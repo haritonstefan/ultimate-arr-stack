@@ -1,4 +1,4 @@
-# Local .lan domains for port-free service access
+# Local .lan / .local domains for port-free service access
 # DNS resolves to Traefik's macvlan IP (where port 80 is available)
 # Traefik routes by Host header to correct service
 #
@@ -8,35 +8,62 @@
 #
 # Note: Replace 10.10.0.11 with your chosen TRAEFIK_LAN_IP
 # Note: `pihole reloaddns` does NOT pick up bind-mount changes — use `docker restart pihole`
+#
+# .lan is the primary/reliable TLD — use it for Docker-to-Docker and any
+# client where you need this to always work. .local entries below are an
+# ADDITIVE convenience alias: some LAN clients (commonly Windows) will
+# resolve them via Pi-hole fine, but macOS and many Linux resolvers treat
+# .local as reserved for mDNS/Bonjour and never ask a DNS server for it —
+# so .local may silently not work on those clients. If it doesn't, use the
+# .lan URL instead; nothing here breaks .lan. See docs/LOCAL-DNS.md for the
+# per-client test. Entries are per-host only, never a zone-wide `address=/local/...`
+# — that would make Pi-hole authoritative for the whole .local zone and break
+# mDNS-discovered devices and any host reachable at <name>.local today.
 
 # Media services
 address=/jellyfin.lan/TRAEFIK_LAN_IP
+address=/jellyfin.local/TRAEFIK_LAN_IP
 address=/seerr.lan/TRAEFIK_LAN_IP
+address=/seerr.local/TRAEFIK_LAN_IP
 address=/jellyseerr.lan/TRAEFIK_LAN_IP
+address=/jellyseerr.local/TRAEFIK_LAN_IP
 address=/jellyseer.lan/TRAEFIK_LAN_IP
+address=/jellyseer.local/TRAEFIK_LAN_IP
 
-# *arr stack (VPN-protected)
+# *arr stack
 address=/sonarr.lan/TRAEFIK_LAN_IP
+address=/sonarr.local/TRAEFIK_LAN_IP
 address=/radarr.lan/TRAEFIK_LAN_IP
+address=/radarr.local/TRAEFIK_LAN_IP
 address=/prowlarr.lan/TRAEFIK_LAN_IP
+address=/prowlarr.local/TRAEFIK_LAN_IP
 address=/bazarr.lan/TRAEFIK_LAN_IP
+address=/bazarr.local/TRAEFIK_LAN_IP
 
 # Download clients
 address=/qbit.lan/TRAEFIK_LAN_IP
+address=/qbit.local/TRAEFIK_LAN_IP
 address=/sabnzbd.lan/TRAEFIK_LAN_IP
+address=/sabnzbd.local/TRAEFIK_LAN_IP
 
 # Infrastructure
 address=/traefik.lan/TRAEFIK_LAN_IP
+address=/traefik.local/TRAEFIK_LAN_IP
 address=/pihole.lan/TRAEFIK_LAN_IP
+address=/pihole.local/TRAEFIK_LAN_IP
 
 # Utilities
 address=/uptime.lan/TRAEFIK_LAN_IP
+address=/uptime.local/TRAEFIK_LAN_IP
 address=/duc.lan/TRAEFIK_LAN_IP
+address=/duc.local/TRAEFIK_LAN_IP
 address=/beszel.lan/TRAEFIK_LAN_IP
+address=/beszel.local/TRAEFIK_LAN_IP
 
 # Proper IPv6 response for .lan domains (no real IPv6 addresses needed).
 # Returns :: (unspecified) instead of NXDOMAIN for AAAA queries. This is the
 # standard dnsmasq approach for IPv4-only local domains. Required because
-# Alpine/musl-based containers (e.g. Gluetun) treat AAAA NXDOMAIN as a hard
-# failure — even when the A (IPv4) record resolves fine.
+# Alpine/musl-based containers treat AAAA NXDOMAIN as a hard failure — even
+# when the A (IPv4) record resolves fine. Scoped to .lan only — .local stays
+# per-host (see note above), so no zone-wide AAAA catch-all for it.
 address=/lan/::

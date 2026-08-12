@@ -1,11 +1,12 @@
-# Local .lan domain routing (port-free access)
+# Local .lan / .local domain routing (port-free access)
 #
 # How it works:
-# 1. Pi-hole DNS resolves *.lan → TRAEFIK_LAN_IP (macvlan, e.g. 10.10.0.11)
+# 1. Pi-hole DNS resolves *.lan (and, per-host, *.local) → TRAEFIK_LAN_IP (macvlan, e.g. 10.10.0.11)
 # 2. Browser requests http://sonarr.lan → Traefik on port 80 (macvlan IP)
 # 3. Traefik matches Host header → routes to correct service:port
 #
 # Result: http://sonarr.lan instead of http://10.10.0.10:8989
+# .local is an additive alias — see docs/LOCAL-DNS.md for client support notes.
 #
 # Note: Requires Traefik macvlan setup (see docs/LOCAL-DNS.md)
 
@@ -13,92 +14,92 @@ http:
   routers:
     # === Media Services ===
     jellyfin-lan:
-      rule: "Host(`jellyfin.lan`)"
+      rule: "Host(`jellyfin.lan`) || Host(`jellyfin.local`)"
       entryPoints: [web]
       service: jellyfin-lan
 
     seerr-lan:
-      rule: "Host(`seerr.lan`)"
+      rule: "Host(`seerr.lan`) || Host(`seerr.local`)"
       entryPoints: [web]
       service: seerr-lan
 
     # Legacy redirects (jellyseerr/jellyseer → seerr)
     jellyseerr-lan:
-      rule: "Host(`jellyseerr.lan`)"
+      rule: "Host(`jellyseerr.lan`) || Host(`jellyseerr.local`)"
       entryPoints: [web]
       middlewares: [jellyseerr-redirect]
       service: seerr-lan
 
     jellyseer-lan:
-      rule: "Host(`jellyseer.lan`)"
+      rule: "Host(`jellyseer.lan`) || Host(`jellyseer.local`)"
       entryPoints: [web]
       middlewares: [jellyseerr-redirect]
       service: seerr-lan
 
-    # === *arr Stack (VPN-protected via Gluetun) ===
+    # === *arr Stack ===
     sonarr-lan:
-      rule: "Host(`sonarr.lan`)"
+      rule: "Host(`sonarr.lan`) || Host(`sonarr.local`)"
       entryPoints: [web]
       service: sonarr-lan
 
     radarr-lan:
-      rule: "Host(`radarr.lan`)"
+      rule: "Host(`radarr.lan`) || Host(`radarr.local`)"
       entryPoints: [web]
       service: radarr-lan
 
     prowlarr-lan:
-      rule: "Host(`prowlarr.lan`)"
+      rule: "Host(`prowlarr.lan`) || Host(`prowlarr.local`)"
       entryPoints: [web]
       service: prowlarr-lan
 
     bazarr-lan:
-      rule: "Host(`bazarr.lan`)"
+      rule: "Host(`bazarr.lan`) || Host(`bazarr.local`)"
       entryPoints: [web]
       service: bazarr-lan
 
     # === Download Clients ===
     qbit-lan:
-      rule: "Host(`qbit.lan`)"
+      rule: "Host(`qbit.lan`) || Host(`qbit.local`)"
       entryPoints: [web]
       service: qbit-lan
 
     sabnzbd-lan:
-      rule: "Host(`sabnzbd.lan`)"
+      rule: "Host(`sabnzbd.lan`) || Host(`sabnzbd.local`)"
       entryPoints: [web]
       service: sabnzbd-lan
 
     # === Infrastructure ===
     traefik-lan:
-      rule: "Host(`traefik.lan`)"
+      rule: "Host(`traefik.lan`) || Host(`traefik.local`)"
       entryPoints: [web]
       service: api@internal
 
     pihole-lan:
-      rule: "Host(`pihole.lan`)"
+      rule: "Host(`pihole.lan`) || Host(`pihole.local`)"
       entryPoints: [web]
       service: pihole-lan
 
     # === Utilities ===
     uptime-lan:
-      rule: "Host(`uptime.lan`)"
+      rule: "Host(`uptime.lan`) || Host(`uptime.local`)"
       entryPoints: [web]
       service: uptime-lan
 
     duc-lan:
-      rule: "Host(`duc.lan`)"
+      rule: "Host(`duc.lan`) || Host(`duc.local`)"
       entryPoints: [web]
       service: duc-lan
 
     beszel-lan:
-      rule: "Host(`beszel.lan`)"
+      rule: "Host(`beszel.lan`) || Host(`beszel.local`)"
       entryPoints: [web]
       service: beszel-lan
 
   middlewares:
     jellyseerr-redirect:
       redirectRegex:
-        regex: "^http://jellyseer{1,2}[.]lan(.*)"
-        replacement: "http://seerr.lan${1}"
+        regex: "^http://jellyseer{1,2}[.](lan|local)(.*)"
+        replacement: "http://seerr.${1}${2}"
         permanent: true
 
   services:
@@ -114,8 +115,7 @@ http:
           - url: "http://172.20.0.8:5055"
 
     # === *arr Stack ===
-    # Sonarr/Radarr now run on the arr-stack bridge with their own IPs
-    # (no longer behind Gluetun). Prowlarr stays behind Gluetun (172.20.0.3).
+    # All *arr services run on the arr-stack bridge with their own static IPs.
     sonarr-lan:
       loadBalancer:
         servers:
@@ -129,23 +129,23 @@ http:
     prowlarr-lan:
       loadBalancer:
         servers:
-          - url: "http://172.20.0.3:9696"
+          - url: "http://172.20.0.19:9696"
 
     bazarr-lan:
       loadBalancer:
         servers:
           - url: "http://172.20.0.9:6767"
 
-    # === Download Clients (via Gluetun) ===
+    # === Download Clients ===
     qbit-lan:
       loadBalancer:
         servers:
-          - url: "http://172.20.0.3:8085"
+          - url: "http://172.20.0.17:8085"
 
     sabnzbd-lan:
       loadBalancer:
         servers:
-          - url: "http://172.20.0.3:8080"
+          - url: "http://172.20.0.18:8080"
 
     # === Infrastructure ===
     pihole-lan:

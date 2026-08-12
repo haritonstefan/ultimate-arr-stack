@@ -17,7 +17,7 @@ A separate `therapy-stack` runs at `/volume1/docker/therapy-stack/` on its own n
 
 **Files referencing therapy-stack:** `pihole/dnsmasq.d/02-local-dns.conf`, `traefik/dynamic/therapy.local.yml`
 
-**IMPORTANT:** Baserow's static IP (172.20.0.20) is critical. Without it, Docker can assign Gluetun's IP (172.20.0.3) to Baserow on reboot, breaking the VPN stack. The `ip_range: 172.20.0.128/25` in `docker-compose.traefik.yml` confines dynamic IPs to 128-255.
+**IMPORTANT:** Baserow's static IP (172.20.0.20) is critical. Without it, Docker can assign a dynamic IP to Baserow on reboot that collides with one of the stack's statically-pinned services. The `ip_range: 172.20.0.128/25` in `docker-compose.arr-stack.yml` confines dynamic IPs to 128-255.
 
 Therapy-stack local repo: `/Users/adamknowles/dev/n8n Therapybot/Git repo/`
 
@@ -39,4 +39,4 @@ Back up a service's config volume before any version bump with a DB migration (`
 
 ## E2E Tests
 
-Run `npm run test:e2e` after any change to Docker Compose files, service config, networks, or ports. All 14 tests must pass. They screenshot every service UI and verify API responses.
+Run `npm run test:e2e` after any change to Docker Compose files, service config, networks, or ports. All 13 tests must pass. They screenshot every service UI and verify API responses.

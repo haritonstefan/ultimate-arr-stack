@@ -68,17 +68,6 @@ setup() {
     done
 }
 
-@test "gluetun does not receive all env vars via env_file" {
-    local arr_file="$REPO_ROOT/docker-compose.arr-stack.yml"
-    [[ -f "$arr_file" ]] || skip "arr-stack compose file not found"
-    # Gluetun should use explicit environment vars, not env_file
-    local gluetun_section
-    gluetun_section=$(awk '/^  gluetun:/{found=1; next} found && /^  [a-zA-Z#]/{found=0} found' "$arr_file")
-    if echo "$gluetun_section" | grep -q 'env_file:'; then
-        fail "Gluetun uses env_file — should use explicit environment vars"
-    fi
-}
-
 @test "jellyfin media mounts are read-only" {
     for f in $(get_compose_files); do
         local fname

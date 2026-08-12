@@ -38,17 +38,16 @@
 
 | Service | IP | Port | Notes |
 |---------|-----|------|-------|
-| **Gluetun** | **172.20.0.3** | — | VPN gateway |
-| ↳ qBittorrent | (via Gluetun) | 8085 | Torrent downloads |
-| ↳ SABnzbd | (via Gluetun) | 8082 | Usenet downloads |
-| ↳ Prowlarr | (via Gluetun) | 9696 | Indexer manager |
-| Sonarr | 172.20.0.10 | 8989 | TV shows (own IP — not via VPN) |
-| Radarr | 172.20.0.11 | 7878 | Movies (own IP — not via VPN) |
+| qBittorrent | 172.20.0.17 | 8085 | Torrent downloads |
+| SABnzbd | 172.20.0.18 | 8082 | Usenet downloads |
+| Prowlarr | 172.20.0.19 | 9696 | Indexer manager |
+| Sonarr | 172.20.0.10 | 8989 | TV shows |
+| Radarr | 172.20.0.11 | 7878 | Movies |
 | Jellyfin | 172.20.0.4 | 8096 | Media server |
 | Pi-hole | 172.20.0.5 | 8081 | DNS ad-blocking (`/admin`) |
 | Seerr | 172.20.0.8 | 5055 | Request management |
 | Bazarr | 172.20.0.9 | 6767 | Subtitles |
-| ↳ FlareSolverr | (via Gluetun) | 8191 | Cloudflare bypass (inactive until added as an Indexer Proxy in Prowlarr — see [APP-CONFIG.md](APP-CONFIG.md#46-prowlarr-indexer-manager)) |
+| FlareSolverr | 172.20.0.21 | 8191 | Cloudflare bypass, internal-only — no published host port (inactive until added as an Indexer Proxy in Prowlarr — see [APP-CONFIG.md](APP-CONFIG.md#46-prowlarr-indexer-manager)) |
 
 **+ local DNS** (traefik.yml):
 
@@ -80,26 +79,22 @@
 
 ### Service Connection Guide
 
-**VPN-protected services** (qBittorrent, SABnzbd, Prowlarr, FlareSolverr) share Gluetun's network via `network_mode: service:gluetun` — these carry the traffic that must stay hidden (peers + indexer scraping).
-
-**Bridge services** (Sonarr, Radarr, Jellyfin, Seerr, Bazarr, …) run on the `arr-stack` bridge with their own IPs. Sonarr (172.20.0.10) and Radarr (172.20.0.11) are *not* behind the VPN: they only contact metadata providers (TVDB/TMDB) and internal services, so they need no VPN — and staying on the bridge keeps them reachable when a gluetun/VPN reconnect happens.
+All services run on the `arr-stack` bridge network with their own static IPs and container names — every service is reachable from every other by its container name, no shared network namespace involved.
 
 | From | To | Use | Why |
 |------|-----|-----|-----|
-| Sonarr | qBittorrent | `gluetun:8085` | Download client is behind the VPN |
-| Radarr | qBittorrent | `gluetun:8085` | Download client is behind the VPN |
-| Sonarr | SABnzbd | `gluetun:8080` | Download client is behind the VPN |
-| Radarr | SABnzbd | `gluetun:8080` | Download client is behind the VPN |
-| Prowlarr | Sonarr | `sonarr:8989` | Sonarr is on the bridge (own IP) |
-| Prowlarr | Radarr | `radarr:7878` | Radarr is on the bridge (own IP) |
-| Prowlarr | FlareSolverr | `localhost:8191` | Same network stack (both behind Gluetun) |
+| Sonarr | qBittorrent | `qbittorrent:8085` | Own IP on the bridge |
+| Radarr | qBittorrent | `qbittorrent:8085` | Own IP on the bridge |
+| Sonarr | SABnzbd | `sabnzbd:8080` | Own IP on the bridge (internal container port, not the host-published 8082) |
+| Radarr | SABnzbd | `sabnzbd:8080` | Own IP on the bridge (internal container port, not the host-published 8082) |
+| Prowlarr | Sonarr | `sonarr:8989` | Own IP on the bridge |
+| Prowlarr | Radarr | `radarr:7878` | Own IP on the bridge |
+| Prowlarr | FlareSolverr | `flaresolverr:8191` | Own IP on the bridge |
 | Seerr | Sonarr | `sonarr:8989` | Both on the bridge |
 | Seerr | Radarr | `radarr:7878` | Both on the bridge |
 | Seerr | Jellyfin | `jellyfin:8096` | Both have own IPs |
 | Bazarr | Sonarr | `sonarr:8989` | Both on the bridge |
 | Bazarr | Radarr | `radarr:7878` | Both on the bridge |
-
-> **Reaching VPN-side services from the bridge:** use the `gluetun` hostname (or `172.20.0.3`) — qBittorrent/SABnzbd/Prowlarr listen inside gluetun's namespace, so they have no Docker DNS name of their own. Gluetun's `FIREWALL_OUTBOUND_SUBNETS` includes `172.20.0.0/24`, so Prowlarr (in the VPN namespace) can reach Sonarr/Radarr on the bridge.
 
 ## Common Commands
 
@@ -136,22 +131,20 @@ docker compose -f docker-compose.arr-stack.yml up -d
 | Network | Subnet | Purpose |
 |---------|--------|---------|
 | arr-stack | 172.20.0.0/24 | Service communication |
-| vpn-net | 10.8.1.0/24 | Internal VPN routing (WireGuard peers) |
 | traefik-lan | (your LAN)/24 | macvlan for .lan domains (+ local DNS only) |
 
-> **Note:** `docker compose up` shows these as `arr-stack`, `arr-stack_vpn-net`, and `arr-stack_traefik-lan`. The `arr-stack_` prefix is normal — Docker adds the project name to networks that don't have an explicit `name:` set.
+> **Note:** `docker compose up` shows these as `arr-stack` and `arr-stack_traefik-lan`. The `arr-stack_` prefix is normal — Docker adds the project name to networks that don't have an explicit `name:` set.
 
 ## Startup Order
 
 Services start in dependency order (handled automatically by `depends_on`):
 
 1. **Pi-hole** → DNS ready (for containers; optionally your LAN)
-2. **Gluetun** → VPN connected (uses Pi-hole for internal DNS)
-3. **Prowlarr, qBittorrent, SABnzbd** → VPN-protected services (behind Gluetun)
-4. **Sonarr, Radarr** → bridge services (own IPs, not via VPN); reach the download clients via `gluetun`
-5. **Seerr, Bazarr** → connect to Sonarr/Radarr by bridge hostname (`sonarr`/`radarr`)
-6. **FlareSolverr** → Cloudflare bypass (via Gluetun, shares VPN with Prowlarr)
-6. **Jellyfin, WireGuard** → Independent, start anytime
+2. **Prowlarr, qBittorrent, SABnzbd** → indexer manager and download clients, each on its own bridge IP
+3. **Sonarr, Radarr** → reach the download clients and Prowlarr by container name (`qbittorrent`/`sabnzbd`/`prowlarr`)
+4. **Seerr, Bazarr** → connect to Sonarr/Radarr by bridge hostname (`sonarr`/`radarr`)
+5. **FlareSolverr** → Cloudflare bypass, reached by Prowlarr via `flaresolverr:8191`
+6. **Jellyfin** → Independent, starts anytime
 
 ## Compose Files
 
@@ -167,9 +160,7 @@ Services start in dependency order (handled automatically by `depends_on`):
 | qBittorrent | Torrent client |
 | SABnzbd | Usenet client |
 | Bazarr | Subtitles |
-| Gluetun | VPN gateway |
 | Pi-hole | DNS/ad-blocking |
-| WireGuard | VPN server |
 | FlareSolverr | CAPTCHA bypass |
 
 ### `docker-compose.traefik.yml` (+ local DNS)
@@ -194,7 +185,6 @@ Services start in dependency order (handled automatically by `depends_on`):
 
 | Service | Description |
 |---------|-------------|
-| deunhealth | Auto-restart on VPN reconnect |
 | Uptime Kuma | Service uptime monitoring |
 | duc | Disk usage treemap |
 | Beszel | System metrics (CPU, RAM, disk, containers) |

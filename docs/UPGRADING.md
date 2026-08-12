@@ -89,7 +89,7 @@ This applies automatically when you pull and redeploy. No action required unless
 
 ### v1.7.2 → v1.7.3
 
-Fixes `.lan` DNS resolution inside VPN-tunneled containers, adds a script to fix duplicate Jellyfin entries after enabling TRaSH naming, and improves Seerr configuration.
+Fixes `.lan` DNS resolution inside Alpine/musl-based containers, adds a script to fix duplicate Jellyfin entries after enabling TRaSH naming, and improves Seerr configuration.
 
 #### 1. Pull and redeploy
 
@@ -99,9 +99,9 @@ git pull origin main
 docker compose -f docker-compose.arr-stack.yml up -d --force-recreate
 ```
 
-#### 2. Fix .lan DNS for VPN-tunneled services
+#### 2. Fix .lan DNS resolution for Alpine/musl-based containers
 
-If you use `.lan` domains (local DNS setup), add the IPv6 wildcard to prevent DNS failures inside Gluetun:
+If you use `.lan` domains (local DNS setup), add the IPv6 wildcard to prevent DNS failures inside Alpine/musl-based containers:
 
 ```bash
 # Check if already present
@@ -109,7 +109,7 @@ grep 'address=/lan/::' pihole/dnsmasq.d/02-local-dns.conf || echo 'address=/lan/
 docker restart pihole
 ```
 
-Without this, webhooks and notifications from Sonarr/Radarr to `.lan` hostnames (e.g., `homeassistant.lan`) silently fail. This is the standard dnsmasq approach for IPv4-only local domains — it returns a proper AAAA response (the `::` unspecified address) instead of NXDOMAIN. Alpine/musl-based containers like Gluetun treat AAAA NXDOMAIN as a hard failure, even when the A (IPv4) record resolves fine.
+Without this, webhooks and notifications from Sonarr/Radarr to `.lan` hostnames (e.g., `homeassistant.lan`) silently fail. This is the standard dnsmasq approach for IPv4-only local domains — it returns a proper AAAA response (the `::` unspecified address) instead of NXDOMAIN. Alpine/musl-based containers treat AAAA NXDOMAIN as a hard failure, even when the A (IPv4) record resolves fine.
 
 #### 3. Fix duplicate Jellyfin entries (if applicable)
 

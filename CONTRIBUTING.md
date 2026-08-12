@@ -29,7 +29,6 @@ ultimate-arr-stack/
 │   ├── REFERENCE.md                # Quick reference (IPs, ports, commands)
 │   ├── BACKUP.md                   # Backup & restore guide
 │   ├── UPGRADING.md                # How to upgrade the stack
-│   ├── HOME-ASSISTANT.md           # Home Assistant integration
 │   └── LEGAL.md                    # Legal notice
 ├── .claude/
 │   ├── instructions.md             # AI assistant instructions
@@ -51,12 +50,9 @@ Internet → Cloudflare Tunnel (or Router Port Forward 80→8080, 443→8443)
                             ▼
            Traefik (listening on 8080/8443 on NAS)
                             │
-                            ├─► Jellyfin, Seerr, Bazarr (Direct)
-                            │
-                            └─► Gluetun (VPN Gateway)
-                                    │
-                                    └─► qBittorrent, Sonarr, Radarr, Prowlarr
-                                        (Privacy-protected services)
+                            └─► Jellyfin, Seerr, Bazarr, Sonarr, Radarr,
+                                Prowlarr, qBittorrent, SABnzbd (Direct —
+                                each on its own bridge IP)
 ```
 
 ### Multi-File Architecture
@@ -236,7 +232,7 @@ Every version-changing release follows this order. Doing it as one unbroken flow
    ```bash
    npm run test:e2e
    ```
-   This logs into each service, takes screenshots of every dashboard, and asserts root folders and media libraries are present. All 14 tests must pass. Screenshots are saved to `tests/e2e/screenshots/` for visual review.
+   This logs into each service, takes screenshots of every dashboard, and asserts root folders and media libraries are present. All 13 tests must pass. Screenshots are saved to `tests/e2e/screenshots/` for visual review.
 
 ### Tagging and Publishing
 

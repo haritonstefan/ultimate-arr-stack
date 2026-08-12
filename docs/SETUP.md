@@ -25,7 +25,7 @@ Decide how you'll access your media stack:
 
 | Setup | How you access | What to configure | Good for |
 |-------|----------------|-------------------|----------|
-| **Core** | `192.168.1.50:8096` | Just `.env` + VPN credentials | Testing, single user |
+| **Core** | `192.168.1.50:8096` | Just `.env` | Testing, single user |
 | **+ local DNS** | `jellyfin.lan` | Configure Pi-hole + add Traefik | Home/family use |
 | **+ remote access** | URLs work from outside your home | Add Cloudflare Tunnel and/or Tailscale | Watch/manage from anywhere |
 
@@ -53,11 +53,10 @@ Decide how you'll access your media stack:
 
   </details>
 - **SSH access** to your NAS (enable in NAS settings)
-- **VPN Subscription** - Any provider supported by [Gluetun](https://github.com/qdm12/gluetun-wiki/tree/main/setup/providers) (Surfshark, NordVPN, PIA, Mullvad, ProtonVPN, etc.)
 - **Usenet Provider** (optional, ~$4-6/month) - Frugal Usenet, Newshosting, Eweka, etc.
 - **Usenet Indexer** (optional) - NZBGeek (~$12/year) or DrunkenSlug (free tier)
 
-> **Why Usenet?** More reliable than public torrents (no fakes), faster downloads, SSL-encrypted (no VPN needed). See [SABnzbd setup](APP-CONFIG.md#43-sabnzbd-usenet-downloads).
+> **Why Usenet?** More reliable than public torrents (no fakes), faster downloads, SSL-encrypted. See [SABnzbd setup](APP-CONFIG.md#43-sabnzbd-usenet-downloads).
 
 **For + remote access (Cloudflared path):**
 - **Domain name** (~$10/year) - [Cloudflare Registrar](https://www.cloudflare.com/products/registrar/) recommended
@@ -79,10 +78,9 @@ Decide how you'll access your media stack:
 | **Sonarr** | TV show manager - searches for episodes, sends to download client | Core |
 | **Radarr** | Movie manager - searches for movies, sends to download client | Core |
 | **Prowlarr** | Indexer manager - finds download sources for Sonarr/Radarr | Core |
-| **qBittorrent** | Torrent client - downloads files (through VPN) | Core |
+| **qBittorrent** | Torrent client - downloads files | Core |
 | **SABnzbd** | Usenet client - downloads files via SSL (optional, for Usenet users) | Core |
 | **Bazarr** | Subtitle manager - finds and syncs subtitles for your library | Core |
-| **Gluetun** | VPN container - routes download traffic through VPN so your ISP can't see what you download | Core |
 | **Pi-hole** | DNS server - blocks ads, provides Docker DNS | Core |
 | **Traefik** | Reverse proxy - enables `.lan` domains | + local DNS |
 | **Cloudflared** | Tunnel to Cloudflare - secure remote access without port forwarding | + remote access (Cloudflared path) |
@@ -91,7 +89,7 @@ Decide how you'll access your media stack:
 ### Files You Need To Edit
 
 **Core:**
-- `.env` - Media path, timezone, PUID/PGID, VPN credentials
+- `.env` - Media path, timezone, PUID/PGID
 
 **+ local DNS:**
 - `.env` - Add NAS IP, Pi-hole password, Traefik macvlan settings
@@ -113,11 +111,11 @@ Decide how you'll access your media stack:
 
 | File | Purpose | Which setup? |
 |------|---------|--------------|
-| `docker-compose.arr-stack.yml` | Core media stack (Jellyfin, *arr apps, downloads, VPN) | Core |
+| `docker-compose.arr-stack.yml` | Core media stack (Jellyfin, *arr apps, downloads) | Core |
 | `docker-compose.traefik.yml` | Reverse proxy for .lan domains and external access | + local DNS |
 | `docker-compose.cloudflared.yml` | Secure tunnel to Cloudflare (no port forwarding) | + remote access (Cloudflared path) |
 | `docker-compose.tailscale.yml` | Mesh VPN subnet router for private LAN access | + remote access (Tailscale path) |
-| `docker-compose.utilities.yml` | Monitoring, auto-recovery, disk usage | Utilities (optional) |
+| `docker-compose.utilities.yml` | Monitoring, disk usage | Utilities (optional) |
 
 See [Quick Reference](REFERENCE.md) for full service lists, .lan URLs, and network details.
 
@@ -327,7 +325,7 @@ sudo chown -R 1000:1000 /srv/docker/arr-stack
 
 ## Step 2: Edit Your Settings
 
-The stack needs your media path, timezone, VPN credentials, and a few passwords. Everything goes in one `.env` file.
+The stack needs your media path, timezone, and a few passwords. Everything goes in one `.env` file.
 
 > **Note:** From this point forward, all commands run **on your NAS via SSH**. If you closed your terminal, reconnect with `ssh your-username@nas-ip` and `cd $NAS_STACK_DIR` (or your clone location). **UGOS users:** SSH may time out—re-enable in Control Panel → Terminal if needed.
 
@@ -375,59 +373,9 @@ Set your timezone (used for scheduling, logs, and UI times):
 TZ=Europe/London              # Find yours: https://en.wikipedia.org/wiki/List_of_tz_database_time_zones
 ```
 
-### 2.4 Configure VPN
-
-Add your VPN credentials to `.env`. Gluetun supports 30+ providers—find yours below:
-
-<details>
-<summary><strong>Surfshark (WireGuard)</strong></summary>
-
-| Step | Screenshot |
-|:-----|:-----------|
-| 1. Go to [my.surfshark.com](https://my.surfshark.com/) → VPN → Manual Setup → Router → WireGuard | <img src="images/Surfshark/1.png" width="700"> |
-| 2. Select **"I don't have a key pair"** | <img src="images/Surfshark/2.png" width="700"> |
-| 3. Under Credentials, enter a name (e.g., `ugreen-nas`) | <img src="images/Surfshark/3.png" width="700"> |
-| 4. Click **"Generate a new key pair"** and copy both keys to your notes | <img src="images/Surfshark/4.png" width="700"> |
-| 5. Click **"Choose location"** and select a server (e.g., United Kingdom) | <img src="images/Surfshark/5.png" width="700"> |
-| 6. Click the **Download** arrow to get the `.conf` file | <img src="images/Surfshark/6.png" width="700"> |
-
-7. Open the downloaded `.conf` file and note the `Address` and `PrivateKey` values:
-   ```ini
-   [Interface]
-   Address = 10.14.0.2/16
-   PrivateKey = aBcDeFgHiJkLmNoPqRsTuVwXyZ...
-   ```
-
-8. Edit `.env`:
-   ```bash
-   VPN_SERVICE_PROVIDER=surfshark
-   VPN_TYPE=wireguard
-   WIREGUARD_PRIVATE_KEY=your_private_key_here
-   WIREGUARD_ADDRESSES=10.14.0.2/16
-   VPN_COUNTRIES=United Kingdom
-   ```
-
-> **Note:** `VPN_COUNTRIES` in your `.env` maps to Gluetun's `SERVER_COUNTRIES` env var.
-
-</details>
-
-<details>
-<summary><strong>Other Providers (NordVPN, PIA, Mullvad, etc.)</strong></summary>
-
-See the Gluetun wiki for your provider:
-- [NordVPN](https://github.com/qdm12/gluetun-wiki/blob/main/setup/providers/nordvpn.md)
-- [Private Internet Access](https://github.com/qdm12/gluetun-wiki/blob/main/setup/providers/private-internet-access.md)
-- [Mullvad](https://github.com/qdm12/gluetun-wiki/blob/main/setup/providers/mullvad.md)
-- [ProtonVPN](https://github.com/qdm12/gluetun-wiki/blob/main/setup/providers/protonvpn.md)
-- [All providers](https://github.com/qdm12/gluetun-wiki/tree/main/setup/providers)
-
-Update `.env` with your provider's required variables.
-
-</details>
-
 > **Don't want Pi-hole?** Change `DNS_ADDRESS=172.20.0.5` to your preferred public DNS (e.g., `1.1.1.1`, `8.8.8.8`) in `docker-compose.arr-stack.yml`.
 
-### 2.5 Create Passwords
+### 2.4 Create Passwords
 
 **Pi-hole Password:**
 
@@ -472,10 +420,6 @@ docker compose -f docker-compose.arr-stack.yml up -d
 ```bash
 # Check all containers are running
 docker ps
-
-# Check VPN connection (should show a VPN IP and location)
-docker logs gluetun 2>&1 | grep "Public IP address" | tail -1
-
 ```
 
 ---
@@ -494,23 +438,7 @@ Both guides walk you through creating accounts, connecting services, and adding 
 
 ## Step 5: Check It Works
 
-Time to verify everything is connected and protected before you start adding content.
-
-### VPN Test
-
-> **⚠️ Do this before downloading anything.** If your VPN isn't working, your real IP will be exposed to trackers.
-
-Run on NAS via SSH:
-```bash
-docker exec gluetun wget -qO- https://ipinfo.io/ip       # Should show VPN IP, not your home IP
-docker exec qbittorrent wget -qO- https://ipinfo.io/ip   # Same - confirms qBit uses VPN
-```
-
-**Thorough test:** Visit [ipleak.net](https://ipleak.net) from your browser, then run the same test from inside qBittorrent:
-```bash
-docker exec qbittorrent wget -qO- https://ipleak.net/json
-```
-Compare the IPs — qBittorrent should show your VPN's IP, not your home IP.
+Time to verify everything is connected before you start adding content.
 
 ### Service Integration Test
 1. Sonarr/Radarr: Settings → Download Clients → Test
@@ -565,7 +493,7 @@ Service configs are stored in Docker named volumes. Run periodic backups:
 ./scripts/arr-backup.sh --tar
 ```
 
-Creates a ~13MB tarball of essential configs (VPN settings, indexers, request history, etc.).
+Creates a ~13MB tarball of essential configs (indexers, request history, etc.).
 
 See **[Backup & Restore](BACKUP.md)** for full details on what's backed up, restore procedures, and automation.
 
@@ -573,7 +501,7 @@ See **[Backup & Restore](BACKUP.md)** for full details on what's backed up, rest
 
 ## Optional Utilities
 
-Deploy monitoring, auto-recovery, and disk usage tools.
+Deploy monitoring and disk usage tools.
 
 **[→ Utilities setup guide](UTILITIES.md)**
 
@@ -594,33 +522,29 @@ Other *arr apps you can add to your Core stack:
    lidarr-config:
    ```
 
-2. Add port to gluetun:
-   ```yaml
-   - "8686:8686"   # Lidarr
-   ```
-
-3. Add the service:
+2. Add the service, on its own bridge IP (pick an unused address in the `172.20.0.128/25` dynamic range, or assign a free static one below `.128`):
    ```yaml
    lidarr:
      image: lscr.io/linuxserver/lidarr:latest
      container_name: lidarr
-     network_mode: "service:gluetun"
-     depends_on:
-       gluetun:
-         condition: service_healthy
      environment:
        - PUID=${PUID}
        - PGID=${PGID}
        - TZ=${TZ}
+     ports:
+       - "8686:8686"   # Direct local access (http://NAS_IP:8686)
+     networks:
+       arr-stack:
+         ipv4_address: 172.20.0.22
      volumes:
        - lidarr-config:/config
        - ${MEDIA_ROOT}:/data
      restart: unless-stopped
    ```
 
-4. Redeploy: `docker compose -f docker-compose.arr-stack.yml up -d`
+3. Redeploy: `docker compose -f docker-compose.arr-stack.yml up -d`
 
-5. **(+ local DNS)** Add `.lan` domain:
+4. **(+ local DNS)** Add `.lan` domain:
    ```bash
    # Add to pihole/dnsmasq.d/02-local-dns.conf
    echo "address=/lidarr.lan/TRAEFIK_LAN_IP" >> pihole/dnsmasq.d/02-local-dns.conf

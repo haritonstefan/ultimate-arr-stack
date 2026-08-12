@@ -1,148 +1,5 @@
 # Troubleshooting
 
-## Gluetun: Harmless Log Noise on Startup
-
-**Symptom:** Two scary-looking lines in `docker logs gluetun` even though the VPN appears to be working:
-
-```
-ERROR [vpn] getting public IP address information: persisting public ip address: open /tmp/gluetun/ip: permission denied
-INFO  [healthcheck] listening for ICMP packets: not permitted: you can try adding NET_RAW capability to resolve this; permanently falling back to plain DNS over UDP checks
-```
-
-**Cause:** Both are non-fatal. The first is gluetun unable to cache the detected public IP to a file inside the container — the VPN connection itself is unaffected. The second is gluetun's healthcheck wanting to ping; we drop `NET_RAW` for security, so it falls back to DNS lookups (still a valid health signal).
-
-**Confirm the VPN is actually working:**
-```bash
-# Should print your VPN exit IP, NOT your home IP
-docker exec gluetun wget -qO- https://ifconfig.me
-```
-
-If that shows a different IP from your home connection, gluetun is fine — leave the warnings alone. If it shows your real IP (or times out), see the gluetun logs for `tunnel down`, `auth failed`, or the container restarting — those are the actual failure modes worth chasing.
-
-## Indexers: New Releases Never Grab (VPN Exit Country Blocked)
-
-**Symptom:** A monitored episode/movie that is clearly out (aired days ago) never gets grabbed. Sonarr/Radarr history is empty for it, nothing is in the queue, and an interactive search returns **0 releases**. Prowlarr health shows `Indexers unavailable due to failures for more than 6 hours: EZTV` (or another indexer), and that indexer is auto-disabled.
-
-**Cause:** The VPN exit is in a country that legally blocks the indexer. Our stack defaults to `VPN_COUNTRIES=United Kingdom`, and the UK now serves Cloudflare-level legal blocks for several public torrent indexers. The block returns **HTTP 451** with a body like:
-
-```
-In response to a legal order, Cloudflare has taken steps to limit access
-to this website through Cloudflare's pass-through security and CDN services
-within United Kingdom.
-```
-
-Prowlarr (and all `*arr` indexer traffic) rides the gluetun tunnel, so every query exits through the blocked country. EZTV — the indexer most likely to carry a niche/new TV release — is the usual casualty.
-
-**Diagnose:**
-```bash
-# 1. Confirm the VPN exit country
-docker exec gluetun wget -qO- https://ipinfo.io/json   # look at "country"
-
-# 2. Test the failing indexer in Prowlarr (id 3 = EZTV here; GET /indexer to list ids)
-PK=<prowlarr-apikey>
-curl -s -X POST "http://localhost:9696/api/v1/indexer/test?apikey=$PK" \
-  -H "Content-Type: application/json" \
-  -d "$(curl -s http://localhost:9696/api/v1/indexer/3?apikey=$PK)"
-# "UnavailableForLegalReasons" / 451 in the error = legal block, not a dead indexer
-
-# 3. Which indexers are in backoff
-curl -s "http://localhost:9696/api/v1/indexerstatus?apikey=$PK"
-```
-
-**Fix — switch the VPN exit out of the blocking country:**
-```bash
-cd /volume1/docker/arr-stack
-cp .env ".env.bak-$(date +%Y%m%d-%H%M%S)"          # .env is gitignored — edit on the NAS
-sed -i 's/^VPN_COUNTRIES=United Kingdom$/VPN_COUNTRIES=Netherlands/' .env
-
-# Recreate gluetun AND every container sharing its network namespace
-# (sonarr, radarr, prowlarr, qbittorrent, sabnzbd, flaresolverr — all bounce together)
-docker compose -f docker-compose.arr-stack.yml up -d
-
-# Verify the new exit + that the indexer is reachable again
-docker exec gluetun wget -qO- "https://eztvx.to/api/get-torrents?limit=1"   # HTTP 200 = unblocked
-
-# Clear the indexer backoff so Prowlarr queries it again (disable then re-enable)
-DEF=$(curl -s "http://localhost:9696/api/v1/indexer/3?apikey=$PK")
-echo "$DEF" | python3 -c 'import sys,json;d=json.load(sys.stdin);d["enable"]=False;print(json.dumps(d))' \
-  | curl -s -X PUT "http://localhost:9696/api/v1/indexer/3?apikey=$PK" -H "Content-Type: application/json" -d @-
-echo "$DEF" | curl -s -X PUT "http://localhost:9696/api/v1/indexer/3?apikey=$PK" -H "Content-Type: application/json" -d @-
-```
-
-Surfshark's WireGuard key is account-wide, so changing only `VPN_COUNTRIES` is enough — gluetun picks a server in the new country with the same key. No new config from Surfshark is needed. The VPN only covers the download stack (qBittorrent/usenet/indexers/`*arr`), **not** Jellyfin, so a non-UK exit has no downside for playback. Leave it on a non-blocking country (e.g. Netherlands) to avoid recurrence; revert with the `.env` backup if ever needed.
-
-> **Diagnostic gotcha — Prowlarr masks API keys.** `GET /api/v1/indexer/<id>` returns indexer secrets as a short placeholder, **not** the real key. If you curl an indexer's newznab API directly using that masked value you'll get `<error code="102" description="Empty API Key"/>` and zero results — which looks like a dead indexer but isn't. Prowlarr's own searches use the real key (32 chars for NZBgeek). Read the real value from `prowlarr.db` (`Indexers.Settings` JSON) before testing by hand, or just trust Prowlarr's search rather than a manual curl.
-
-## Indexers: All Slow / Intermittently Failing (Throttled VPN Exit Server)
-
-**Symptom:** Searches feel broken but nothing is hard-down. An interactive search or `GET /api/v1/search` takes **~50s** instead of a second or two. Per-indexer tests are slow (10s+) or return **HTTP 500**, and the slowness hits *everything* riding the tunnel at once — including reliable paid indexers like NZBgeek that should never be slow. Crucially, this is **not** a 451/legal block, and `GET /api/v1/indexerstatus` may show **0 failures** because nothing has crossed the 6-hour auto-disable threshold yet. The web UIs of VPN-protected services (Prowlarr/qBittorrent) also feel laggy and jittery (response times jumping 10ms → 4s).
-
-This can masquerade as unrelated problems: a `*.lan` service like `seerr.lan` "feeling slow" is **not** caused by this (that path is local and never touches the VPN) — but *triggering a search/request inside Jellyseerr* is, because that call fans out seerr → Sonarr/Radarr → Prowlarr → tunnel.
-
-**Cause:** The specific WireGuard server gluetun happened to connect to is congested or throttled (or partially degraded). The country is fine — it's just a bad server, and gluetun will sit on it indefinitely. The exit IP resolves and basic reachability works (so it's not a tunnel-down or auth failure), it's just slow. Distinct from the geo-block case above (HTTP 451), which needs a *country* change.
-
-**Diagnose:**
-```bash
-PK=<prowlarr-apikey>
-# Aggregate search time — the headline symptom (healthy = ~1-2s, throttled = ~50s)
-time curl -s "http://localhost:9696/api/v1/search?query=ubuntu&type=search&limit=5" -H "X-Api-Key: $PK" >/dev/null
-
-# Per-indexer latency — throttled = several seconds each and/or HTTP 500
-for id in $(curl -s "http://localhost:9696/api/v1/indexer" -H "X-Api-Key: $PK" | python3 -c 'import sys,json;[print(i["id"]) for i in json.load(sys.stdin)]'); do
-  cfg=$(curl -s "http://localhost:9696/api/v1/indexer/$id" -H "X-Api-Key: $PK")
-  code=$(printf '%s' "$cfg" | curl -s -o /dev/null -w '%{http_code} %{time_total}s' -X POST "http://localhost:9696/api/v1/indexer/test" -H "X-Api-Key: $PK" -H "Content-Type: application/json" --data-binary @-)
-  echo "indexer $id: $code"
-done
-
-# Confirm the exit IP (note it, so you can verify it changes after the restart)
-docker exec gluetun wget -qO- https://ipinfo.io/ip
-```
-
-**Fix — bounce gluetun onto a fresh server (same country, no `.env` change):**
-```bash
-cd /volume1/docker/arr-stack
-docker restart gluetun                       # reconnects to a *different* server with the same key
-# Wait for healthy (~50s), confirm the exit IP changed:
-docker inspect -f '{{.State.Health.Status}}' gluetun
-docker exec gluetun wget -qO- https://ipinfo.io/ip
-
-# REQUIRED: restart every container sharing gluetun's network namespace.
-# Restarting gluetun alone severs their networking — they go dead (empty/000 responses)
-# until bounced too.
-docker restart prowlarr qbittorrent          # add sabnzbd/sonarr/radarr/bazarr if they share the netns
-```
-
-Re-run the aggregate search to confirm it's back to ~1-2s. (Observed 2026-06-19: a throttled NL server gave a 54s search with two indexers at HTTP 500; `docker restart gluetun` + bouncing the dependents dropped it to **1.2s**, no config change.) If the new server is *also* slow, restart gluetun again to roll the dice on another. Only switch `VPN_COUNTRIES` (the section above) if you actually see HTTP 451 — that's a different problem.
-
-## Apps Unreachable After a VPN Reconnect (Stale Network Namespace)
-
-> **Note (v1.7.23):** Sonarr and Radarr were moved off the VPN onto the bridge, so they are **no longer affected** by this — a gluetun restart can't strand them. This section now applies only to the remaining VPN-bound apps: **qBittorrent, SABnzbd, Prowlarr, FlareSolverr**.
-
-**Symptom:** After gluetun restarts (VPN reconnect, server switch, or container recreate), some VPN-bound apps go unreachable from the rest of the stack even though `docker ps` shows them **Up (healthy)**. Classic tells: Prowlarr reporting FlareSolverr down, or Sonarr/Radarr unable to reach their download clients (grabs not starting). The affected container answers fine on its own `localhost` but refuses connections from anything else.
-
-**Cause:** These services use `network_mode: "service:gluetun"`, so they share gluetun's network namespace. When gluetun restarts, that namespace is destroyed. Two things can happen to each dependent:
-- It is SIGKILLed and stays **Exited** (docker can't rejoin a vanished namespace), or
-- It keeps **running as a zombie** on the dead namespace — alive on `127.0.0.1`, invisible to the network, and its localhost healthcheck still passes so it shows green.
-
-The second case is the nasty one: everything *looks* fine. `deunhealth` won't touch it (it's not unhealthy) and an exited-only watcher misses it.
-
-**Auto-recovery (built in):** The `gluetun-recover` watcher handles both cases. On every gluetun `health_status: healthy` event it restarts any `gluetun.dependent=true` container that is Exited **or** whose `StartedAt` predates gluetun's current start (a stale-namespace zombie). No action needed — give it ~30-60s after gluetun goes healthy.
-
-**Verify / manual fix if ever needed:**
-```bash
-# Any dependent started BEFORE gluetun is a stale zombie:
-g=$(docker inspect -f '{{.State.StartedAt}}' gluetun | cut -c1-19); echo "gluetun: $g"
-for c in qbittorrent sabnzbd prowlarr flaresolverr; do
-  echo "  $c: $(docker inspect -f '{{.State.StartedAt}}' $c | cut -c1-19)"
-done
-# Confirm reachability through the shared namespace:
-docker exec seerr   wget -qO- http://gluetun:9696/ping   # prowlarr -> {"status":"OK"}
-docker exec prowlarr wget -qO- http://127.0.0.1:8191/    # flaresolverr -> "ready" (use 127.0.0.1, it's IPv4-only)
-
-# Manual recovery (gluetun-recover does this automatically):
-docker restart qbittorrent sabnzbd prowlarr flaresolverr   # or whichever started before gluetun
-```
-
 ## NEVER Use `--remove-orphans` (Multi-Compose-File Project)
 
 This stack splits its services across several compose files (`docker-compose.arr-stack.yml`, `docker-compose.utilities.yml`, `docker-compose.traefik.yml`, …) that share **one project directory and project name**. To compose, any running container of the project that is not defined in the file you passed with `-f` is an *orphan*. So:
@@ -157,33 +14,6 @@ This happened for real on 2026-08-01 (~20:30 BST): a single `--remove-orphans` r
 The same split has a second face: **recreate a service only via the file that defines it.** Attachments and settings that live in one file are silently dropped if the container is ever brought up through another path — e.g. traefik's `traefik-lan` macvlan (its `10.10.0.11` LAN presence) exists only in `docker-compose.traefik.yml`; a traefik container created without that file comes up bridge-only and **every `.lan` URL dies while the container still reports healthy** (also observed 2026-08-01).
 
 If you actually need to prune an orphan, remove that one container by name with `docker rm`.
-
-### After a Gluetun RECREATE (not just a restart), `docker restart` cannot save you
-
-Everything above assumes gluetun was **restarted** — same container, same ID. If gluetun is **recreated** (its config in the compose file drifted, so *any* `docker compose up -d`, even of an unrelated service like seerr, replaces it), the dependents' `network_mode: "service:gluetun"` still points at the **old container ID**. They are SIGKILLed (exit 137), and now `docker restart` — whether run by you or by `gluetun-recover` — fails with:
-
-```
-Error response from daemon: ... joining network namespace of container <old-id>: No such container
-```
-
-`gluetun-recover` logs this failure loudly but **cannot fix it** (it would need to run compose, which it can't). The only fix is a compose-level recreate of the dependents so they bind to the new gluetun container:
-
-```bash
-cd /volume1/docker/arr-stack
-docker compose -f docker-compose.arr-stack.yml up -d qbittorrent sabnzbd prowlarr flaresolverr
-```
-
-**If that compose command hangs:** a dependent that died mid-netns-join can land in a `Dead` state that dockerd can never remove (`docker rm -f` → "removal of container is already in progress", forever). Compose then wedges trying to replace it, or leaves the replacement under a hash-prefixed name (`<id>_flaresolverr`). The only cure is a Docker daemon restart, which also clears the Dead container (observed 2026-08-01 with flaresolverr; check nobody is streaming first):
-
-```bash
-sudo systemctl restart docker    # bounces the whole stack; ~2-3 min to settle
-```
-
-**Prevention:** before any `docker compose up -d <service>` on the arr-stack file, check whether gluetun would be recreated too, and plan for the dependents:
-
-```bash
-docker compose -f docker-compose.arr-stack.yml up -d --dry-run <service> 2>&1 | grep -i recreate
-```
 
 ## SABnzbd: Stuck Unpack Loop
 
@@ -291,7 +121,7 @@ sudo reboot
 
 **Cause:** at boot the Docker **daemon** restores containers itself (`restart: always`) — compose is not involved, so no amount of `depends_on` affects it. Bindings pinned to a specific host IP fail to be established, and this Docker version logs it and starts the container anyway rather than refusing. Verified across three reboots on 2026-08-05: **pihole, baserow and therapybot — the only three containers pinned to `${NAS_IP}` — failed every time, while all 13 wildcard-bound containers were fine.** A single failed binding drops the container's *entire* mapping set, which is why Pi-hole also lost its `0.0.0.0:8081` web UI.
 
-Pi-hole's healthcheck (`dig @127.0.0.1` *inside* the container) passes throughout, so neither `docker ps` nor `deunhealth` will ever flag this.
+Pi-hole's healthcheck (`dig @127.0.0.1` *inside* the container) passes throughout, so neither `docker ps` nor any healthcheck-based watcher will ever flag this.
 
 **Diagnose:**
 ```bash

@@ -4,7 +4,7 @@
 
 <img align="right" width="45%" src="docs/images/demo/demo.gif">
 
-A Docker Compose stack for automated media management. Request a show or movie, it downloads and appears in Jellyfin—ready to watch, VPN-protected.
+A Docker Compose stack for automated media management. Request a show or movie, it downloads and appears in Jellyfin—ready to watch.
 
 Works on Ugreen, Synology, QNAP, or any Docker host.
 
@@ -12,13 +12,12 @@ Works on Ugreen, Synology, QNAP, or any Docker host.
 
 ## Why "Ultimate"?
 
-- **Production-ready** — Real healthchecks, auto-recovery when VPN reconnects, backup script. Not just "it runs."
+- **Production-ready** — Real healthchecks, backup script. Not just "it runs."
 - **Battle-tested** — Edge cases found and fixed across multiple NAS setups. More resilient than most.
 - **Best practices built in** — Downloads appear instantly without using extra disk space, files are named consistently, and download settings are tuned for security and performance. Based on [TRaSH Guides](https://trash-guides.info/).
 - **Everything you need** — Jellyfin, Sonarr, Radarr, Prowlarr, Bazarr, Seerr, qBittorrent, SABnzbd, Pi-hole, Cloudflare Tunnel, Tailscale. Modular — skip what you don't need, add what you do (e.g. Lidarr).
 - **Step-by-step guide** — Not just a docker-compose file in a repo.
-- **Flexible** — Supports 30+ VPN providers. Plex users can swap or add Jellyfin (see [Plex guide](docs/SETUP.md#plex)).
-- **Privacy by default** — All downloads route through your VPN.
+- **Flexible** — Plex users can swap or add Jellyfin (see [Plex guide](docs/SETUP.md#plex)).
 
 <details>
 <summary>Technical features</summary>
@@ -27,7 +26,6 @@ Works on Ugreen, Synology, QNAP, or any Docker host.
 - **TRaSH naming** — Standardised file naming with quality, codec, HDR, and release group info
 - **Local `.lan` domains** — `http://sonarr.lan` instead of port numbers
 - **Intel Quick Sync** — GPU-accelerated transcoding on Intel NAS (Ugreen DXP4800+, etc.). Remove 4 lines from compose file if no Intel GPU.
-- **Auto-recovery** — Services restart when VPN reconnects
 - **Container hardening** — All capabilities dropped, `no-new-privileges` enforced, re-added only where required
 - **Production healthchecks** — Not just "is the process running?"
 - **One-command backup script** — Essential configs to ~13MB
@@ -40,7 +38,7 @@ Works on Ugreen, Synology, QNAP, or any Docker host.
 **The flow:** Someone requests a show → it downloads automatically → appears in your media library.
 
 Request: Seerr → Sonarr/Radarr → Prowlarr
-Download: qBittorrent (torrents) or SABnzbd (Usenet) — both via VPN (Gluetun)
+Download: qBittorrent (torrents) or SABnzbd (Usenet)
 Watch: Jellyfin — locally or remotely via Traefik
 
 **Choose your setup:**
@@ -61,11 +59,10 @@ Watch: Jellyfin — locally or remotely via Traefik
 | [Local DNS](docs/LOCAL-DNS.md) | Set up `.lan` domains with Pi-hole + Traefik |
 | [Remote Access (Cloudflared)](docs/REMOTE-ACCESS.md) | Access Jellyfin/Seerr from anywhere via your domain |
 | [Tailscale](docs/TAILSCALE.md) | Reach the whole LAN from anywhere via mesh VPN |
-| [Utilities](docs/UTILITIES.md) | Monitoring, auto-recovery, disk usage tools |
+| [Utilities](docs/UTILITIES.md) | Monitoring, disk usage tools |
 | [Quick Reference](docs/REFERENCE.md) | Cheat sheet: all URLs, ports, IPs, common commands |
 | [Upgrading](docs/UPGRADING.md) | How to pull updates and redeploy |
 | [Backup & Restore](docs/BACKUP.md) | Backup your configs, restore after disaster |
-| [Home Assistant](docs/HOME-ASSISTANT.md) | Get notifications when downloads complete |
 | [Troubleshooting](docs/TROUBLESHOOTING.md) | Fix common issues: stuck downloads, DNS, 4K stuttering |
 | [Legal](docs/LEGAL.md) | What this software is for, disclaimer |
 

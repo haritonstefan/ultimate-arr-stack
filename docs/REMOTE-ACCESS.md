@@ -160,7 +160,7 @@ From your phone on cellular data (not WiFi):
 
 **You're done!** The sections below are optional but recommended:
 - **[Backup](SETUP.md#backup)** — Protect your configs
-- **[Optional Utilities](UTILITIES.md)** — Monitoring, auto-recovery, disk usage
+- **[Optional Utilities](UTILITIES.md)** — Monitoring, disk usage
 
 > **Need full network access remotely?** Cloudflare Tunnel only exposes HTTP services (Jellyfin, Seerr). For admin UIs (Sonarr, Radarr, etc.) or `.lan` domains from anywhere — including CGNAT and hotel WiFi — add [Tailscale](TAILSCALE.md). Free for personal use, complementary to Cloudflared.
 

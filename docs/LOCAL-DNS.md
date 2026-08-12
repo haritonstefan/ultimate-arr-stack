@@ -1,10 +1,19 @@
-# + local DNS (.lan domains)
+# + local DNS (.lan / .local domains)
 
 > Return to [Setup Guide](SETUP.md)
 
 Access services without remembering port numbers: `http://sonarr.lan` instead of `http://NAS_IP:8989`.
 
 This works by giving Traefik its own IP address on your home network. When you type `sonarr.lan`, Pi-hole's DNS points it to Traefik, which routes you to the right service.
+
+**`.lan` vs `.local`:** `.lan` is the primary, reliable TLD — it always works, from any client, including Docker containers talking to each other. Every service is *also* reachable at the matching `.local` name (e.g. `sonarr.local`) as a convenience alias, but `.local` is reserved for mDNS/Bonjour on macOS and many Linux resolvers, which never ask a DNS server for it — so `.local` may silently not resolve on some clients (commonly macOS/iOS), while working fine on others (commonly Windows). Nothing breaks if `.local` doesn't work for you: `.lan` always does. Test which you get on a given client:
+
+```bash
+nslookup sonarr.local <pihole-ip>   # confirms Pi-hole serves the record — necessary, not sufficient
+ping sonarr.local                    # confirms the OS resolver actually uses it — the real test
+```
+
+If `ping` fails but `nslookup` succeeds, that client's OS is routing `.local` to mDNS and ignoring Pi-hole — use the `.lan` URL there instead.
 
 **Step 1: Configure macvlan settings in .env**
 
@@ -60,13 +69,13 @@ chmod 644 pihole/dnsmasq.d/02-local-dns.conf
 docker compose -f docker-compose.arr-stack.yml restart pihole
 ```
 
-> **⚠️ Important:** Stack `.lan` domains are managed in `02-local-dns.conf`. If you add your own domains (e.g., homeassistant.lan), use either the CLI or Pi-hole web UI — but never define the same domain in both places, as they can conflict and cause unpredictable DNS resolution.
+> **⚠️ Important:** Stack `.lan`/`.local` domains are managed in `02-local-dns.conf`. If you add your own domains (e.g., homeassistant.lan), use either the CLI or Pi-hole web UI — but never define the same domain in both places, as they can conflict and cause unpredictable DNS resolution. Keep any `.local` entries you add per-host (`address=/myservice.local/IP`), never a zone-wide `address=/local/...` — a `.local` catch-all makes Pi-hole authoritative for the entire zone for every LAN client and breaks mDNS-discovered devices.
 
 **Step 5: Set router DNS**
 
 Configure your router's DHCP to advertise your NAS IP as DNS server. All devices will then use Pi-hole for DNS.
 
-> **Note:** Due to a macvlan limitation, `.lan` domains don't work from the NAS itself (e.g., via SSH). They work from all other devices.
+> **Note:** Due to a macvlan limitation, `.lan`/`.local` domains don't work from the NAS itself (e.g., via SSH). They work from all other devices (subject to the `.local`/mDNS caveat above).
 
 See [REFERENCE.md](REFERENCE.md#service-access) for the full list of `.lan` URLs.
 
@@ -75,7 +84,7 @@ See [REFERENCE.md](REFERENCE.md#service-access) for the full list of `.lan` URLs
 ## ✅ + local DNS Complete!
 
 **Congratulations!** You now have:
-- Pretty `.lan` URLs for all services
+- Pretty `.lan` URLs for all services (plus a `.local` alias, client-dependent)
 - Ad-blocking via Pi-hole
 - No ports to remember
 
@@ -83,6 +92,6 @@ See [REFERENCE.md](REFERENCE.md#service-access) for the full list of `.lan` URLs
 - **Stop here** if local access is all you need
 - **Continue to [+ remote access](REMOTE-ACCESS.md)** to watch from anywhere
 
-**Other docs:** [Upgrading](UPGRADING.md) · [Home Assistant Integration](HOME-ASSISTANT.md) · [Quick Reference](REFERENCE.md)
+**Other docs:** [Upgrading](UPGRADING.md) · [Quick Reference](REFERENCE.md)
 
 Issues? [Report on GitHub](https://github.com/Pharkie/ultimate-arr-stack/issues) or [chat on Reddit](https://www.reddit.com/user/Jeff46K4/).

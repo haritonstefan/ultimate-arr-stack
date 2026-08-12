@@ -37,8 +37,6 @@ services:
       timeout: 10s
       retries: 3
       start_period: 30s
-    labels:
-      - "deunhealth.restart.on.unhealthy=true"
     restart: always
     logging:
       driver: "json-file"

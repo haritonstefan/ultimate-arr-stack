@@ -10,10 +10,10 @@ docker compose -f docker-compose.utilities.yml up -d
 
 | Service | Description | Access |
 |---------|-------------|--------|
-| **deunhealth** | Auto-restarts services when VPN recovers | Internal |
 | **Uptime Kuma** | Service monitoring dashboard | http://uptime.lan |
 | **Beszel** | System metrics (CPU, RAM, disk, containers) | http://beszel.lan |
 | **duc** | Disk usage analyzer (treemap UI) | http://duc.lan |
+| **DIUN** | Notifies when a container image has an update available | Internal (webhook) |
 | **Configarr** | Syncs TRaSH Guides quality profiles to Sonarr/Radarr | Run manually |
 
 > **Want Docker log viewing?** [Dozzle](https://dozzle.dev/) is a lightweight web UI for viewing container logs in real-time. Not included in the stack, but easy to add if you want it.
@@ -47,19 +47,19 @@ docker restart uptime-kuma
 | Bazarr | HTTP | `http://bazarr:6767/ping` | Has own IP |
 | Beszel | HTTP | `http://172.20.0.15:8090` | Use static IP |
 | duc | HTTP | `http://duc:80` | Has own IP |
-| FlareSolverr | HTTP | `http://172.20.0.3:8191` | Via Gluetun |
+| FlareSolverr | HTTP | `http://flaresolverr:8191` | Has own IP |
 | Jellyfin | HTTP | `http://jellyfin:8096/health` | Has own IP |
 | Pi-hole | HTTP | `http://pihole:80/admin` | Has own IP |
-| Prowlarr | HTTP | `http://gluetun:9696/ping` | Via Gluetun |
-| qBittorrent | HTTP | `http://gluetun:8085` | Via Gluetun |
+| Prowlarr | HTTP | `http://prowlarr:9696/ping` | Has own IP |
+| qBittorrent | HTTP | `http://qbittorrent:8085` | Has own IP |
 | Radarr | HTTP | `http://radarr:7878/ping` | Has own IP |
 | Seerr | HTTP | `http://seerr:5055/api/v1/status` | Has own IP |
 | Sonarr | HTTP | `http://sonarr:8989/ping` | Has own IP |
 | Traefik | HTTP | `http://traefik:80/ping` | Has own IP |
 
-> **Why `gluetun` for qBittorrent/SABnzbd/Prowlarr?** Those share Gluetun's network (`network_mode: service:gluetun`) and don't get their own Docker DNS entries — use the `gluetun` hostname or its static IP `172.20.0.3`. Sonarr/Radarr run on the bridge with their own names/IPs, so monitor them directly.
+> Every service now has its own container name and static IP, so monitors can all use Docker DNS directly — no more shared-namespace hostname to remember.
 
-> **Optional extras**: You can also add monitors for external URLs (e.g., `https://jellyfin.yourdomain.com`), Home Assistant, or other devices — these won't trigger pre-commit warnings.
+> **Optional extras**: You can also add monitors for external URLs (e.g., `https://jellyfin.yourdomain.com`) or other devices — these won't trigger pre-commit warnings.
 
 ## Beszel Setup
 

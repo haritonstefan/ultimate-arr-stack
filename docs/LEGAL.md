@@ -8,7 +8,6 @@ This project provides Docker Compose configurations for a self-hosted media serv
 - **Organize existing media files** - Automated renaming, sorting, and metadata management
 - **Manage subtitles** - Download subtitles for media you have rights to view
 - **Enable family requests** - Let household members request additions to your library
-- **Maintain privacy** - Route traffic through VPN for network security
 
 ## Software Components
 
@@ -22,7 +21,6 @@ All software included in this stack is **legal, open-source, and has legitimate 
 | **qBittorrent** | BitTorrent client - torrenting is a legal distribution method used for Linux, Creative Commons content, academic datasets, game patches, and other legal media |
 | **Bazarr** | Subtitle management for accessibility |
 | **Seerr** | Request management for household media libraries |
-| **Gluetun VPN** | Network privacy and security |
 | **Traefik** | Reverse proxy and SSL certificate management |
 | **Pi-hole** | DNS-level ad blocking and network security |
 

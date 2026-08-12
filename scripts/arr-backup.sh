@@ -28,8 +28,8 @@ set -euo pipefail
 #   scp user@nas:/tmp/arr-stack-backup-*.tar.gz ./backup.tar.gz
 #
 # Restoring a volume:
-#   docker run --rm -v ./backup/gluetun-config:/source:ro \
-#     -v PREFIX_gluetun-config:/dest alpine cp -a /source/. /dest/
+#   docker run --rm -v ./backup/prowlarr-config:/source:ro \
+#     -v PREFIX_prowlarr-config:/dest alpine cp -a /source/. /dest/
 #
 
 # --- Failure notifications via Home Assistant webhook ---
@@ -54,7 +54,7 @@ ensure_services_running() {
   COMPOSE_FILE="$NAS_STACK_DIR/docker-compose.arr-stack.yml"
   [ -f "$COMPOSE_FILE" ] || return 0
 
-  CRITICAL="gluetun pihole sonarr radarr prowlarr qbittorrent jellyfin sabnzbd"
+  CRITICAL="pihole sonarr radarr prowlarr qbittorrent jellyfin sabnzbd"
   STOPPED=""
 
   for svc in $CRITICAL; do
@@ -155,8 +155,8 @@ fi
 STEP="detecting volume prefix"
 # Auto-detect volume prefix from running containers if not specified
 if [ -z "$VOLUME_PREFIX" ]; then
-  # Try to find prefix from gluetun container's volumes
-  VOLUME_PREFIX=$(docker inspect gluetun 2>/dev/null | grep -o '"[^"]*_gluetun-config"' | head -1 | tr -d '"' | sed 's/_gluetun-config$//' || true)
+  # Try to find prefix from prowlarr container's volumes
+  VOLUME_PREFIX=$(docker inspect prowlarr 2>/dev/null | grep -o '"[^"]*_prowlarr-config"' | head -1 | tr -d '"' | sed 's/_prowlarr-config$//' || true)
 
   # Fallback: check for any arr-stack-like volumes
   if [ -z "$VOLUME_PREFIX" ]; then
@@ -193,7 +193,6 @@ CURRENT_GID=$(id -g)
 # Essential volumes only (small, hard to recreate)
 # These are settings/configs that would require manual reconfiguration if lost
 VOLUME_SUFFIXES=(
-  gluetun-config          # VPN provider credentials and settings
   qbittorrent-config      # Client settings, categories, watched folders
   sabnzbd-config          # Usenet provider credentials and settings
   prowlarr-config         # Indexer configs and API keys

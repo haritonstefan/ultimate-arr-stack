@@ -22,14 +22,13 @@ The backup script (`scripts/arr-backup.sh`) backs up **essential configs only** 
 
 | Volume | Size | Contents |
 |--------|------|----------|
-| gluetun-config | ~7MB | VPN provider settings |
 | qbittorrent-config | ~9MB | Client settings, categories |
 | prowlarr-config | ~22MB | Indexer configs, API keys |
 | bazarr-config | ~2MB | Subtitle provider credentials |
 | uptime-kuma-data | ~14MB | Monitor configurations |
 | seerr-config | ~5MB | User accounts, requests |
 
-**Total: ~60MB uncompressed, ~13MB compressed**
+**Total: ~53MB uncompressed, ~11MB compressed**
 
 ## What's NOT Backed Up
 
@@ -64,11 +63,10 @@ Output:
 Volume prefix: arr-stack_*
 Backup dir:    /tmp/arr-stack-backup-20241217
 
-Backing up gluetun-config... OK (7.1M)
 Backing up qbittorrent-config... OK (8.9M)
 ...
-Summary: 8 backed up, 0 skipped, 0 failed
-Total size: 58M
+Summary: 7 backed up, 0 skipped, 0 failed
+Total size: 51M
 
 Created: /tmp/arr-stack-backup-20241217.tar.gz (13M)
 ```

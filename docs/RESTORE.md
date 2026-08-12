@@ -38,7 +38,7 @@ gpg --decrypt /tmp/backup.tar.gz.gpg > /tmp/backup.tar.gz
 cd /tmp
 tar -xzf backup.tar.gz
 ls arr-stack-backup-*/
-# Should show: gluetun-config/ qbittorrent-config/ prowlarr-config/ etc.
+# Should show: qbittorrent-config/ prowlarr-config/ etc.
 ```
 
 ### 4. Deploy Fresh Stack
@@ -79,7 +79,6 @@ docker compose -f docker-compose.arr-stack.yml up -d
 
 - Check all containers are running: `docker ps`
 - Access each service UI and confirm settings are restored
-- Run `./scripts/check-vpn.sh` to verify VPN is working
 
 ---
 

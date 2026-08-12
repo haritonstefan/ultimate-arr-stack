@@ -84,8 +84,6 @@ Receives download requests from Sonarr and Radarr and downloads files via torren
 
 SABnzbd provides Usenet downloads as an alternative/complement to qBittorrent.
 
-> **Note:** Usenet is routed through VPN for consistency and an extra layer of security.
-
 1. **Access:** `http://NAS_IP:8082`
 2. **Run Quick-Start Wizard** with your Usenet provider details:
 
@@ -130,15 +128,15 @@ Searches for TV shows, sends download links to qBittorrent/SABnzbd, and organize
 
    **qBittorrent (torrents):**
    - Add → qBittorrent
-   - Host: `gluetun` (Sonarr is on the bridge; qBittorrent is behind the VPN)
+   - Host: `qbittorrent` (own container name/IP on the bridge)
    - Port: `8085`
    - Category: `tv`
 
    **SABnzbd (Usenet):** *(if configured)*
    - Add → SABnzbd
-   - Host: `gluetun` (SABnzbd is behind the VPN)
+   - Host: `sabnzbd` (own container name/IP on the bridge)
    - Port: `8080`
-   - **Note:** SABnzbd's `host_whitelist` must include `gluetun` or it returns `403 Forbidden`.
+   - **Note:** SABnzbd's `host_whitelist` must include `sabnzbd` or it returns `403 Forbidden`.
    - API Key: (from SABnzbd Config → General)
    - Category: `tv`
 
@@ -174,13 +172,13 @@ Searches for movies, sends download links to qBittorrent/SABnzbd, and organizes 
 
    **qBittorrent (torrents):**
    - Add → qBittorrent
-   - Host: `gluetun` (Radarr is on the bridge; qBittorrent is behind the VPN)
+   - Host: `qbittorrent` (own container name/IP on the bridge)
    - Port: `8085`
    - Category: `movies`
 
    **SABnzbd (Usenet):** *(if configured)*
    - Add → SABnzbd
-   - Host: `localhost` (SABnzbd also runs via gluetun)
+   - Host: `sabnzbd` (own container name/IP on the bridge)
    - Port: `8080`
    - API Key: (from SABnzbd Config → General)
    - Category: `movies`
@@ -243,13 +241,13 @@ Manages torrent/Usenet indexers and syncs them to Sonarr/Radarr.
 
 4. **Add FlareSolverr** (for protected torrent sites):
    - Settings → Indexers → Add FlareSolverr
-   - Host: `http://localhost:8191` (FlareSolverr shares Gluetun's network with Prowlarr)
+   - Host: `http://flaresolverr:8191` (own container name/IP on the bridge)
    - Tag: `flaresolverr`
    - **Note:** FlareSolverr doesn't bypass all Cloudflare protections - some indexers may still fail. If you have issues, [Byparr](https://github.com/ThePhaseless/Byparr) is a drop-in alternative using different browser tech.
 5. **Connect to Sonarr:**
    - Settings → Apps → Add → Sonarr
-   - Prowlarr Server: `http://gluetun:9696` (how Sonarr reaches Prowlarr, which is behind the VPN)
-   - Sonarr Server: `http://172.20.0.10:8989` (Prowlarr is inside gluetun's namespace where DNS can't resolve container names — use Sonarr's bridge IP)
+   - Prowlarr Server: `http://prowlarr:9696` (how Sonarr reaches Prowlarr, on its own bridge IP)
+   - Sonarr Server: `http://172.20.0.10:8989` (Sonarr's bridge IP)
    - API Key: (from Sonarr → Settings → General → Security)
 6. **Connect to Radarr:** Same process — Radarr Server: `http://172.20.0.11:7878`
 7. **Sync:** Settings → Apps → Sync App Indexers

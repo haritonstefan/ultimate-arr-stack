@@ -81,28 +81,6 @@ docker compose \
 
 ---
 
-## VPN Verification
-
-Verify the VPN is working and your real IP is not exposed:
-
-```bash
-# Quick check
-./scripts/check-vpn.sh
-
-# Manual check
-docker exec gluetun wget -qO- https://ipinfo.io/ip     # Should show VPN IP
-docker exec qbittorrent wget -qO- https://ipinfo.io/ip  # Should match Gluetun's IP
-```
-
-The `check-vpn.sh` script compares Gluetun's exit IP against your NAS LAN IP and exits non-zero if they match (leak detected). You can add it to cron for periodic monitoring:
-
-```bash
-# Check every 5 minutes, log failures
-*/5 * * * * $NAS_STACK_DIR/scripts/check-vpn.sh >> /var/log/vpn-check.log 2>&1
-```
-
----
-
 ## Backups
 
 Run periodic backups of service configs:
@@ -167,8 +145,7 @@ docker ps --format "table {{.Names}}\t{{.Status}}"
 ```
 
 Services showing `(unhealthy)` may need attention. Common causes:
-- **Gluetun unhealthy**: VPN connection lost — check `docker logs gluetun`
-- **qBittorrent/SABnzbd/Prowlarr unhealthy**: Often caused by Gluetun being down (they share its network). Sonarr/Radarr are on the bridge and not affected by a gluetun outage.
+- **qBittorrent/SABnzbd/Prowlarr unhealthy**: Each runs independently on its own bridge IP, so check that specific container's logs (`docker logs <service>`) — one going down doesn't affect the others.
 - **Pi-hole unhealthy**: DNS resolution failing — check upstream DNS config
 
 ---

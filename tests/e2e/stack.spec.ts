@@ -334,26 +334,6 @@ test.describe('UI screenshots', () => {
   });
 });
 
-// ─── VPN connectivity test ────────────────────────────────────────────────────
-
-test.describe('VPN connectivity', () => {
-  test('VPN-tunneled services are reachable (Gluetun healthy)', async ({ request }) => {
-    const sonarrKey = process.env.SONARR_API_KEY;
-    test.skip(!sonarrKey, 'SONARR_API_KEY not set');
-
-    // Sonarr/Radarr/qBittorrent run through Gluetun (network_mode: service:gluetun).
-    // They only start when Gluetun is healthy (VPN connected). If we can reach
-    // them, the VPN tunnel is active.
-    // For actual IP comparison, run scripts/check-vpn.sh on the NAS.
-    const res = await request.get(url('sonarr', '/api/v3/system/status'), {
-      headers: { 'X-Api-Key': sonarrKey! },
-    });
-    expect(res.ok()).toBeTruthy();
-    const status = await res.json();
-    expect(status.appName).toBe('Sonarr');
-  });
-});
-
 // ─── API assertion tests ─────────────────────────────────────────────────────
 
 test.describe('API assertions', () => {
