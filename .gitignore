@@ -34,7 +34,6 @@ cloudflared/credentials.json
 cloudflared/cert.pem
 
 # Application Configs (these should be on NAS, not in repo)
-gluetun-config/
 seerr/
 bazarr/
 notifiarr/
@@ -111,6 +110,3 @@ docs/*-BASELINE*.md
 # E2E test artifacts
 tests/e2e/screenshots/*.png
 test-results/
-
-# Camera Listen holds the NVR password
-camera-listen/.env
