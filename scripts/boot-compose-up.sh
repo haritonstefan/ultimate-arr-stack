@@ -15,7 +15,7 @@
 # files in the same directory look like orphans to each individual file, and it
 # would delete them.
 
-LOG=/volume1/docker/boot-compose-up.log
+LOG=/volume2/docker/boot-compose-up.log
 
 # Keep the log bounded without needing logrotate.
 if [ -f "$LOG" ] && [ "$(wc -c < "$LOG")" -gt 1000000 ]; then
@@ -40,11 +40,11 @@ echo "docker ready after $((i * 5))s"
 # Order matters across files: DNS (pihole/dnscrypt) and Traefik come up first so
 # everything after them can resolve names and be routed.
 STACKS="
-/volume1/docker/arr-stack/docker-compose.arr-stack.yml
-/volume1/docker/arr-stack/docker-compose.traefik.yml
-/volume1/docker/arr-stack/docker-compose.utilities.yml
-/volume1/docker/arr-stack/docker-compose.tailscale.yml
-/volume1/docker/arr-stack/docker-compose.cloudflared.yml
+/volume2/docker/arr-stack/docker-compose.arr-stack.yml
+/volume2/docker/arr-stack/docker-compose.traefik.yml
+/volume2/docker/arr-stack/docker-compose.utilities.yml
+/volume2/docker/arr-stack/docker-compose.tailscale.yml
+/volume2/docker/arr-stack/docker-compose.cloudflared.yml
 /volume1/docker/frigate/docker-compose.frigate.yml
 /volume1/docker/immich/docker-compose.yml
 /volume1/docker/therapy-stack/docker-compose.nas.yml

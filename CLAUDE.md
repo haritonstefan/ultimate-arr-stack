@@ -9,7 +9,7 @@ SSH credentials are in `.claude/config.local.md`. Read it before running any NAS
 Docker media stack for Ugreen NAS. Edit NAS files (like `pihole/dnsmasq.d/02-local-dns.conf`) **on the NAS**, not locally.
 
 - **Local dev repo**: `/Users/adamknowles/dev/ultimate-arr-stack/`
-- **NAS deploy path**: `/volume1/docker/arr-stack/`
+- **NAS deploy path**: `/volume2/docker/arr-stack/` (volume2 is the SSD pool — all container/docker files live here; volume1 is HDD, reserved for media only)
 
 ## Cross-Stack: Therapy Stack
 
