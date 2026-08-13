@@ -9,16 +9,9 @@
 # Note: Replace 10.10.0.11 with your chosen TRAEFIK_LAN_IP
 # Note: `pihole reloaddns` does NOT pick up bind-mount changes — use `docker restart pihole`
 #
-# .lan is the primary/reliable TLD — use it for Docker-to-Docker and any
-# client where you need this to always work. .local entries below are an
-# ADDITIVE convenience alias: some LAN clients (commonly Windows) will
-# resolve them via Pi-hole fine, but macOS and many Linux resolvers treat
-# .local as reserved for mDNS/Bonjour and never ask a DNS server for it —
-# so .local may silently not work on those clients. If it doesn't, use the
-# .lan URL instead; nothing here breaks .lan. See docs/LOCAL-DNS.md for the
-# per-client test. Entries are per-host only, never a zone-wide `address=/local/...`
-# — that would make Pi-hole authoritative for the whole .local zone and break
-# mDNS-discovered devices and any host reachable at <name>.local today.
+# .local entries are additive (.lan always works as a fallback) — see
+# docs/LOCAL-DNS.md for why, and the per-client test. Keep .local entries
+# per-host only, never a zone-wide `address=/local/...`.
 
 # Media services
 address=/jellyfin.lan/TRAEFIK_LAN_IP
@@ -65,5 +58,5 @@ address=/beszel.local/TRAEFIK_LAN_IP
 # standard dnsmasq approach for IPv4-only local domains. Required because
 # Alpine/musl-based containers treat AAAA NXDOMAIN as a hard failure — even
 # when the A (IPv4) record resolves fine. Scoped to .lan only — .local stays
-# per-host (see note above), so no zone-wide AAAA catch-all for it.
+# per-host, no zone-wide AAAA catch-all (see note above).
 address=/lan/::
