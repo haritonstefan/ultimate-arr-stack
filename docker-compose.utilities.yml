@@ -93,7 +93,8 @@ services:
       arr-stack:
         ipv4_address: 172.20.0.14
     volumes:
-      - /volume1:/scan/volume1:ro      # NAS data (read-only)
+      - /volume1:/scan/volume1:ro      # HDD pool — media (read-only)
+      - /volume2:/scan/volume2:ro      # SSD pool — containers/config/logs (read-only)
       - duc-index:/database            # Persistent index
     ports:
       - "8838:80"                      # Local network access only
