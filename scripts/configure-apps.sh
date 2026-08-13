@@ -40,7 +40,7 @@ source "${SCRIPT_DIR}/lib/configure-helpers.sh"
 # ============================================
 
 DRY_RUN=false
-VERBOSE=false
+VERBOSE="${VERBOSE:-false}"
 NAS_IP=""
 QBIT_COOKIE="/tmp/qbit_configure_cookie.txt"
 
