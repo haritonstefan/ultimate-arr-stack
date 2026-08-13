@@ -138,7 +138,7 @@ qbit_auth() {
 #   $1 = name              — "Sonarr" or "Radarr"
 #   $2 = port              — 8989 or 7878
 #   $3 = api_key           — API key for the service
-#   $4 = root_path         — /data/media/tv or /data/media/movies
+#   $4 = root_path         — /data/Series or /data/Movies
 #   $5 = category          — qBit category: "tv" or "movies"
 #   $6 = naming_check      — field to check: "renameEpisodes" or "renameMovies"
 #   $7 = metadata_fields   — JSON array of metadata field objects

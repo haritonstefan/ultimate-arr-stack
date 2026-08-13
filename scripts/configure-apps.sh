@@ -518,10 +518,10 @@ configure_pihole() {
 
 configure_qbittorrent
 echo ""
-configure_arr_service "Sonarr" 8989 "$SONARR_API_KEY" "/data/media/tv" "tv" \
+configure_arr_service "Sonarr" 8989 "$SONARR_API_KEY" "/data/Series" "tv" \
     "renameEpisodes" "$SONARR_METADATA_FIELDS" "$SONARR_NAMING_PAYLOAD"
 echo ""
-configure_arr_service "Radarr" 7878 "$RADARR_API_KEY" "/data/media/movies" "movies" \
+configure_arr_service "Radarr" 7878 "$RADARR_API_KEY" "/data/Movies" "movies" \
     "renameMovies" "$RADARR_METADATA_FIELDS" "$RADARR_NAMING_PAYLOAD"
 echo ""
 configure_prowlarr

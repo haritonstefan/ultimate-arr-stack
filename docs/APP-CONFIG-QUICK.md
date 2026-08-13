@@ -72,8 +72,8 @@ The script handles qBittorrent, Sonarr, Radarr, Prowlarr, and Bazarr. Complete t
 
 ### 1. Jellyfin — Add libraries
 
-- Movies → Content type "Movies" → Folder `/data/media/movies`
-- TV Shows → Content type "Shows" → Folder `/data/media/tv`
+- Movies → Content type "Movies" → Folder `/data/Movies`
+- TV Shows → Content type "Shows" → Folder `/data/Series`
 
 > **Optional:** [Enable hardware transcoding](APP-CONFIG-ADVANCED.md#hardware-transcoding-intel-quick-sync) for GPU-accelerated playback (recommended for Ugreen NAS).
 

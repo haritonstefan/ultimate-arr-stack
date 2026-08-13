@@ -37,8 +37,8 @@ Streams your media library to any device.
 1. **Access:** `http://NAS_IP:8096`
 2. **Create admin account** when prompted (setup wizard)
 3. **Add Libraries:**
-   - Movies: Content type "Movies", Folder `/data/media/movies`
-   - TV Shows: Content type "Shows", Folder `/data/media/tv`
+   - Movies: Content type "Movies", Folder `/data/Movies`
+   - TV Shows: Content type "Shows", Folder `/data/Series`
 
 > **Optional:** [Enable hardware transcoding](APP-CONFIG-ADVANCED.md#hardware-transcoding-intel-quick-sync) for GPU-accelerated playback (recommended for Ugreen NAS). Also see [Kodi for Fire TV](APP-CONFIG-ADVANCED.md#kodi-for-fire-tv-dolby-vision--truehd-atmos) and [RAID5 streaming tuning](APP-CONFIG-ADVANCED.md#raid5-streaming-tuning).
 
@@ -73,7 +73,7 @@ Receives download requests from Sonarr and Radarr and downloads files via torren
    - `tv` → Save path: `/data/torrents/tv`
    - `movies` → Save path: `/data/torrents/movies`
 
-   > **Why categories matter:** Sonarr/Radarr tell qBittorrent which category to use when requesting downloads. qBittorrent puts files in the category's save path. After download completes, Sonarr/Radarr create hardlinks from `/data/torrents/tv` or `/data/torrents/movies` to your library (`/data/media/tv` or `/data/media/movies`). If categories don't match, downloads won't be found.
+   > **Why categories matter:** Sonarr/Radarr tell qBittorrent which category to use when requesting downloads. qBittorrent puts files in the category's save path. After download completes, Sonarr/Radarr create hardlinks from `/data/torrents/tv` or `/data/torrents/movies` to your library (`/data/Series` or `/data/Movies`). If categories don't match, downloads won't be found.
 
 7. **Set stall timeout:** Tools → Options → BitTorrent → Seeding Limits → **When inactive for:** `30` minutes → **Pause torrent**. This lets Sonarr/Radarr detect stalled downloads and automatically search for alternatives.
 8. **Set concurrent limits:** Tools → Options → Speed → Queue → **Maximum active downloads:** `5`, **Maximum active uploads:** `5`, **Maximum active torrents:** `10`. Prevents overloading the NAS when many torrents are queued.
@@ -123,7 +123,7 @@ Searches for TV shows, sends download links to qBittorrent/SABnzbd, and organize
 
 1. **Access:** `http://NAS_IP:8989`
 2. **Create admin account** when prompted
-3. **Add Root Folder:** Settings → Media Management → `/data/media/tv`
+3. **Add Root Folder:** Settings → Media Management → `/data/Series`
 4. **Add Download Client(s):** Settings → Download Clients
 
    **qBittorrent (torrents):**
@@ -167,7 +167,7 @@ Searches for movies, sends download links to qBittorrent/SABnzbd, and organizes 
 
 1. **Access:** `http://NAS_IP:7878`
 2. **Create admin account** when prompted
-3. **Add Root Folder:** Settings → Media Management → `/data/media/movies`
+3. **Add Root Folder:** Settings → Media Management → `/data/Movies`
 4. **Add Download Client(s):** Settings → Download Clients
 
    **qBittorrent (torrents):**

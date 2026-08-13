@@ -38,7 +38,7 @@ if [ -z "$RADARR_API_KEY" ]; then
 fi
 
 MEDIA_ROOT=$(grep "^MEDIA_ROOT=" "$ENV_FILE" | cut -d= -f2)
-MOVIES_DIR="${MEDIA_ROOT}/media/movies"
+MOVIES_DIR="${MEDIA_ROOT}/Movies"
 
 if [ ! -d "$MOVIES_DIR" ]; then
   echo "ERROR: Movies directory not found at $MOVIES_DIR"
@@ -135,7 +135,7 @@ for m in movies:
                 break
 
     if match:
-        new_path = "/data/media/movies/%s" % match
+        new_path = "/data/Movies/%s" % match
         m["path"] = new_path
 
         update_file = os.path.join(TMPDIR, "update.json")

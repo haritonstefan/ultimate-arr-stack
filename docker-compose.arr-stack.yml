@@ -244,7 +244,8 @@ services:
     volumes:
       - jellyfin-config:/config
       - jellyfin-cache:/cache
-      - ${MEDIA_ROOT}/media:/data/media:ro
+      - ${MEDIA_ROOT}/Movies:/data/Movies:ro
+      - ${MEDIA_ROOT}/Series:/data/Series:ro
     networks:
       arr-stack:
         ipv4_address: 172.20.0.4
@@ -385,7 +386,8 @@ services:
         ipv4_address: 172.20.0.9
     volumes:
       - bazarr-config:/config
-      - ${MEDIA_ROOT}/media:/data/media
+      - ${MEDIA_ROOT}/Movies:/data/Movies
+      - ${MEDIA_ROOT}/Series:/data/Series
     restart: always
     logging: *default-logging
     healthcheck:
