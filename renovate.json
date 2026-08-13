@@ -12,10 +12,9 @@
       "groupName": "LinuxServer.io images"
     },
     {
-      "description": "Group infrastructure images (Gluetun, Traefik, Cloudflared, Pi-hole)",
+      "description": "Group infrastructure images (Traefik, Cloudflared, Pi-hole)",
       "matchDatasources": ["docker"],
       "matchPackageNames": [
-        "qmcgaw/gluetun",
         "traefik",
         "cloudflare/cloudflared",
         "pihole/pihole"
@@ -30,7 +29,6 @@
         "henrygd/beszel-agent",
         "louislam/uptime-kuma",
         "crazymax/diun",
-        "qmcgaw/deunhealth",
         "mkoestler/duc-service"
       ],
       "groupName": "Utility images"

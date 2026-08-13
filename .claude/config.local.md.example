@@ -27,15 +27,23 @@ Copy this file to `config.local.md` and fill in your values.
 |---------|------------|
 | Gateway | 172.20.0.1 |
 | Traefik | 172.20.0.2 |
-| Gluetun | 172.20.0.3 |
 | Jellyfin | 172.20.0.4 |
 | Pi-hole | 172.20.0.5 |
-| WireGuard | 172.20.0.6 |
+| dnscrypt | 172.20.0.6 |
 | Seerr | 172.20.0.8 |
 | Bazarr | 172.20.0.9 |
+| Sonarr | 172.20.0.10 |
+| Radarr | 172.20.0.11 |
 | Cloudflared | 172.20.0.12 |
 | Uptime Kuma | 172.20.0.13 |
 | duc | 172.20.0.14 |
+| Beszel | 172.20.0.15 |
+| DIUN | 172.20.0.16 |
+| qBittorrent | 172.20.0.17 |
+| SABnzbd | 172.20.0.18 |
+| Prowlarr | 172.20.0.19 |
+| Baserow (therapy-stack) | 172.20.0.20 |
+| FlareSolverr | 172.20.0.21 |
 
 ## Service URLs
 
@@ -52,7 +60,6 @@ Replace `yourdomain.com` with your actual domain:
 | qBittorrent | https://qbit.yourdomain.com |
 | Bazarr | https://bazarr.yourdomain.com |
 | Pi-hole | https://pihole.yourdomain.com/admin |
-| WireGuard | https://wg.yourdomain.com |
 | Uptime Kuma | https://uptime.yourdomain.com |
 
 ## Local Access (when on home network)
@@ -68,19 +75,12 @@ NAS LAN IP: `YOUR_NAS_LAN_IP` (or `your-nas.local`)
 | Prowlarr | http://your-nas.local:9696 |
 | qBittorrent | http://your-nas.local:8085 |
 
-## VPN
-
-| Setting | Value |
-|---------|-------|
-| Provider | Your VPN provider |
-| Protocol | WireGuard / OpenVPN |
-| Region | Your preferred region |
-
 ## Paths on NAS
 
 | Path | Contents |
 |------|----------|
-| `/volume1/docker/arr-stack/` | Docker compose files and configs |
-| `/volume1/data/media/` | Media library (movies, tv) |
-| `/volume1/data/torrents/` | qBittorrent downloads |
-| `/volume1/data/usenet/` | SABnzbd downloads |
+| `/volume2/docker/arr-stack/` | Docker compose files and configs (SSD pool) |
+| `/volume1/Media/Movies/` | Movie library |
+| `/volume1/Media/Series/` | TV library |
+| `/volume1/Media/torrents/` | qBittorrent downloads |
+| `/volume1/Media/usenet/` | SABnzbd downloads |

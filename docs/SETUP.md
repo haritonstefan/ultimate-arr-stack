@@ -145,11 +145,11 @@ Add this to `docker-compose.arr-stack.yml` (add `plex-config` to the `volumes:` 
       - /dev/dri:/dev/dri
     volumes:
       - plex-config:/config
-      - ${MEDIA_ROOT}/movies:/media/movies:ro
-      - ${MEDIA_ROOT}/tv:/media/tv:ro
+      - ${MEDIA_ROOT}/Movies:/media/Movies:ro
+      - ${MEDIA_ROOT}/Series:/media/Series:ro
     networks:
       arr-stack:
-        ipv4_address: 172.20.0.11
+        ipv4_address: 172.20.0.3
     restart: always
     logging: *default-logging
     healthcheck:
@@ -189,7 +189,7 @@ Docker comes preinstalled on UGOS - no installation needed! Folders created via 
 
 1. Open UGOS web interface → **Files** app
 2. Create shared folders: **data**, **docker**
-3. Inside **data**, create subfolder: **media**, then inside **media** create **tv** and **movies**
+3. Inside **data**, create subfolders: **Movies**, **Series**
 4. Enable SSH: **Control Panel** → **Terminal** → toggle SSH on
 5. SSH into your NAS and create download directories + install git:
 
@@ -200,10 +200,10 @@ ssh your-username@nas-ip
 sudo apt-get update && sudo apt-get install -y git
 
 # Create media and download directories
-sudo mkdir -p /volume1/data/media/{tv,movies}
+sudo mkdir -p /volume1/data/{Movies,Series}
 sudo mkdir -p /volume1/data/torrents/{tv,movies}
 sudo mkdir -p /volume1/data/usenet/{incomplete,complete/{tv,movies}}
-sudo chown -R 1000:1000 /volume1/data/media /volume1/data/torrents /volume1/data/usenet
+sudo chown -R 1000:1000 /volume1/data/Movies /volume1/data/Series /volume1/data/torrents /volume1/data/usenet
 
 # Set where the stack lives. Default is volume1; change to /volume2/docker/arr-stack
 # if you want the stack on an SSD or second volume. You'll also set this in .env later.
@@ -237,7 +237,7 @@ Scanning media files for viruses is unnecessary - video/audio files can't contai
 <summary><strong>Synology / QNAP</strong></summary>
 
 Use File Station to create:
-- **data** shared folder with subfolder: **media** (containing **tv** and **movies**)
+- **data** shared folder with subfolders: **Movies**, **Series**
 - **docker** shared folder
 
 Then via SSH:
@@ -248,10 +248,10 @@ ssh your-username@nas-ip
 sudo synopkg install Git
 
 # Create media and download directories
-sudo mkdir -p /volume1/data/media/{tv,movies}
+sudo mkdir -p /volume1/data/{Movies,Series}
 sudo mkdir -p /volume1/data/torrents/{tv,movies}
 sudo mkdir -p /volume1/data/usenet/{incomplete,complete/{tv,movies}}
-sudo chown -R 1000:1000 /volume1/data/media /volume1/data/torrents /volume1/data/usenet
+sudo chown -R 1000:1000 /volume1/data/Movies /volume1/data/Series /volume1/data/torrents /volume1/data/usenet
 
 # Set where the stack lives. Default is volume1; change to /volume2/docker/arr-stack
 # if you want the stack on an SSD or second volume. You'll also set this in .env later.
@@ -274,7 +274,7 @@ sudo chown -R 1000:1000 "$NAS_STACK_DIR"
 sudo apt-get update && sudo apt-get install -y git
 
 # Create media and download directories
-sudo mkdir -p /srv/data/media/{tv,movies}
+sudo mkdir -p /srv/data/{Movies,Series}
 sudo mkdir -p /srv/data/torrents/{tv,movies}
 sudo mkdir -p /srv/data/usenet/{incomplete,complete/{tv,movies}}
 sudo chown -R 1000:1000 /srv/data
@@ -294,9 +294,8 @@ sudo chown -R 1000:1000 /srv/docker/arr-stack
 ```
 /volume1/  (or /srv/)
 ├── data/
-│   ├── media/                # Library files (TRaSH recommended)
-│   │   ├── movies/           #   Movie library (Radarr → Jellyfin)
-│   │   └── tv/               #   TV show library (Sonarr → Jellyfin)
+│   ├── Movies/                # Movie library (Radarr → Jellyfin, TRaSH recommended)
+│   ├── Series/                # TV show library (Sonarr → Jellyfin, TRaSH recommended)
 │   ├── torrents/             # qBittorrent downloads
 │   │   ├── tv/               #   Sonarr category
 │   │   └── movies/           #   Radarr category
