@@ -221,7 +221,7 @@ configure_arr_service() {
     "implementation": "QBittorrent",
     "configContract": "QBittorrentSettings",
     "fields": [
-        {"name": "host", "value": "localhost"},
+        {"name": "host", "value": "qbittorrent"},
         {"name": "port", "value": 8085},
         {"name": "username", "value": "${QBIT_USERNAME}"},
         {"name": "password", "value": "${QBIT_PASSWORD}"},
@@ -257,7 +257,7 @@ QBIT_JSON
     "implementation": "Sabnzbd",
     "configContract": "SabnzbdSettings",
     "fields": [
-        {"name": "host", "value": "localhost"},
+        {"name": "host", "value": "sabnzbd"},
         {"name": "port", "value": 8080},
         {"name": "apiKey", "value": "${SABNZBD_API_KEY}"},
         {"name": "${cat_field}", "value": "${category}"},
